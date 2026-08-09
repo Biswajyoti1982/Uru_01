@@ -68,6 +68,14 @@ Build an app where users subscribe to classes for different activities (gym trai
 - Backend validates booking date/slot against the service's availability (400 otherwise). Verified via curl (bad slot→400, good→200) and UI (restricted service shows Mon/Wed/Fri + 3 slots).
 
 
+## Iteration 7 (2026-06) — Provider-centric browsing + profiles
+- **Browse flow changed**: tapping an activity on Home now shows a list of **providers** (coaches) offering it, not raw service cards. Provider cards show avatar, rating, experience, specialties, price-from.
+- **Provider page** (`/app/provider/:id`): profile photo, rating, years of experience, languages, about/bio, certifications/qualifications, and all classes grouped by activity with items/prices and virtual/physical slot previews (physical shows society names). Add-to-cart → existing checkout.
+- **Provider profile data**: users now store `experience_years, certifications[], specialties[], languages[], rating, avatar_url`. Editable via new **My Profile** tab in provider console (`PUT /api/provider/profile`) and captured in **Become-a-Provider** onboarding.
+- **New endpoints**: `GET /api/providers[?category=]` (approved providers summary, sorted by rating), `GET /api/providers/{id}` (full profile + services with resolved `society_names`). Public detail excludes PII (phone) and only returns approved providers.
+- Demo providers seeded with realistic experience/certifications/specialties/languages/ratings + avatars via `seed_providers()`.
+- Verified: testing_agent iteration_5 — backend 37/37 (12 new + 25 regression), frontend 8/8 flows, no regressions.
+
 ## Iteration 6 (2026-06) — Virtual/Physical slots + Societies
 - Classes can be **Virtual** or **Physical**. Service `slots` changed from `List[str]` to `List[{time, mode, societies}]` (`SlotConfig`, mode = Literal physical|virtual). Fixed a latent backend bug where slots were typed `List[str]` but code called `.model_dump()`.
 - **Provider Dashboard**: new slot builder — pick time, toggle Physical/Virtual; physical slots require selecting one or more societies (multiselect from `GET /api/societies`). Edit dialog now correctly loads existing slots + available_days.
@@ -78,6 +86,7 @@ Build an app where users subscribe to classes for different activities (gym trai
 - Verified: testing_agent iteration_3 — backend 11/11 new tests, frontend 6/6 flows, no regressions.
 
 ## Backlog (P1/P2)
-- P1: Admin can pin/highlight activities in a top strip on the Home feed.
-- P1: Admin edit/delete activities (currently create-only).
-- P2: Customer pause-subscription (holidays); ratings for completed bookings; email renewal reminders (Resend).
+- P1: Admin can pin/highlight activities/providers in a top strip on the Home feed.
+- P2: Customer pause-subscription (holidays); real ratings from completed bookings (currently a seeded field); email renewal reminders (Resend).
+- P2: Split monolithic server.py (~840 lines) into routers.
+- P2: Cart UX — confirm toast when switching provider (single-service cart).

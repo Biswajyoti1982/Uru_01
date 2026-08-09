@@ -331,7 +331,7 @@ async def list_providers(category: Optional[str] = None):
 @api_router.get("/providers/{provider_id}")
 async def get_provider(provider_id: str):
     u = await db.users.find_one({"user_id": provider_id}, {"_id": 0})
-    if not u or (u.get("provider_status") != "approved" and u.get("role") != "admin"):
+    if not u or u.get("provider_status") != "approved":
         raise HTTPException(status_code=404, detail="Provider not found")
     svcs = await db.services.find({"provider_id": provider_id, "status": "approved", "is_visible": True}, {"_id": 0}).sort("created_at", -1).to_list(500)
     soc_map = {s["id"]: s.get("name", s["id"]) for s in await db.societies.find({}, {"_id": 0}).to_list(500)}
@@ -339,7 +339,6 @@ async def get_provider(provider_id: str):
         for slot in s.get("slots", []):
             slot["society_names"] = [soc_map.get(x, x) for x in slot.get("societies", [])]
     summary = _provider_summary(u, svcs)
-    summary["phone"] = u.get("phone", "")
     summary["services"] = svcs
     return summary
 
