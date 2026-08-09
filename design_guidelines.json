@@ -1,110 +1,128 @@
 {
-  "theme": "The Performance Pro (Dark Mode Default)",
-  "concept": "Tactical athletic command-center. High-contrast, dense data displays, energetic but strictly functional. Mix of elite athleticism and structured scheduling.",
+  "theme": {
+    "mode": "light",
+    "primary_accent": "#6D28D9",
+    "background": "#F9FAFB"
+  },
   "typography": {
-    "headings": {
-      "family": "Barlow Condensed",
-      "weights": ["700", "900"],
-      "usage": "H1-H4, marketing headers, dashboard section titles. ALWAYS uppercase, tracking-tight.",
-      "import_url": "https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;900&display=swap"
-    },
-    "body": {
-      "family": "DM Sans",
-      "weights": ["400", "500", "700"],
-      "usage": "Standard UI text, form labels, data tables.",
-      "import_url": "https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap"
-    },
-    "hierarchy": {
-      "h1": "text-5xl md:text-6xl uppercase tracking-tighter font-black",
-      "h2": "text-3xl md:text-4xl uppercase tracking-tight font-bold",
-      "h3": "text-xl md:text-2xl uppercase tracking-tight font-bold",
-      "body": "text-base tracking-wide",
-      "small_label": "text-xs uppercase tracking-[0.2em]"
-    }
+    "headings": "Outfit, sans-serif",
+    "body": "DM Sans, sans-serif",
+    "import_url": "@import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;500;700&family=Outfit:wght@400;500;600;700&display=swap');"
   },
   "colors": {
-    "background": {
-      "default": "#0A0A0A",
-      "surface": "#141414",
-      "surface_hover": "#1F1F1F"
+    "primary": {
+      "DEFAULT": "#6D28D9",
+      "foreground": "#FFFFFF",
+      "light": "#8B5CF6",
+      "dark": "#5B21B6"
     },
-    "brand": {
-      "primary": "#39FF14",
-      "primary_hover": "#32E612",
-      "secondary": "#FF3B30"
+    "background": {
+      "DEFAULT": "#FFFFFF",
+      "subtle": "#F9FAFB",
+      "muted": "#F3F4F6",
+      "overlay": "rgba(0, 0, 0, 0.4)"
     },
     "text": {
-      "primary": "#FFFFFF",
-      "secondary": "#A1A1AA",
-      "muted": "#71717A"
+      "primary": "#111827",
+      "secondary": "#4B5563",
+      "tertiary": "#9CA3AF"
     },
-    "border": {
-      "default": "rgba(255,255,255,0.1)",
-      "focus": "#39FF14"
-    }
+    "border": "#E5E7EB"
   },
   "visual_enhancers": {
-    "surfaces": "Tactical Minimalism. No soft drop shadows. Use 1px solid strokes (border-white/10). Active states use 2px inner glow or primary colored borders.",
-    "glassmorphism": "Only for Sticky Headers/Nav. bg-black/60 with backdrop-blur-xl and border-b border-white/10. NO purely transparent backgrounds for menus/dropdowns.",
-    "radii": "Sharp or slightly rounded. max 8px (rounded-md). No pill-shaped cards unless it's a specific badge or CTA."
+    "border_radius": {
+      "card": "16px",
+      "button": "9999px",
+      "chip": "9999px",
+      "bottom_sheet": "24px"
+    },
+    "shadows": {
+      "bottom_bar": "0 -4px 10px -2px rgba(0, 0, 0, 0.05)",
+      "card": "0 2px 8px rgba(0, 0, 0, 0.04)"
+    }
   },
-  "grids_and_layouts": {
-    "dashboard": "High Density Grid (grid-cols-1 md:grid-cols-3 lg:grid-cols-4). Tight gaps (gap-4 or gap-6). Use h-full to stretch items. Cardless or minimal 1px border cards.",
-    "marketing": "The Bento Grid. Asymmetrical grid-cols-1 md:grid-cols-12. gap-8.",
-    "spacing": "Generous spacing. p-6 or p-8 inside cards. Massive vertical rhythm (py-24) between landing page sections.",
-    "alignment": "Optical alignment. Left-align dense data and paragraphs. Never center-everything."
+  "grids": {
+    "category_grid": "grid grid-cols-4 gap-4",
+    "time_slot_grid": "grid grid-cols-3 gap-3"
   },
-  "components": {
-    "navigation": "Sticky top, backdrop-blur-xl, bg-black/60, z-50. Visible links on desktop.",
-    "buttons": "Sharp corners (rounded-none or rounded-sm). Primary: bg-[#39FF14] text-black font-bold uppercase tracking-widest hover:bg-[#32E612] transition-colors. Secondary: border border-white/20 text-white hover:bg-white/10.",
-    "forms": "Shadcn based. bg-[#141414] border-white/10 text-white focus:border-[#39FF14] focus:ring-1 focus:ring-[#39FF14].",
-    "tables_lists": "Dense list views for schedules. border-b border-white/10 for rows. Highlight current day/time with subtle primary left border."
+  "layouts": {
+    "mobile_first": true,
+    "app_container": "w-full max-w-md mx-auto min-h-screen bg-gray-50 shadow-2xl flex flex-col relative sm:border-x sm:border-gray-200",
+    "scroll_area": "flex-1 overflow-y-auto pb-24 bg-white",
+    "bottom_bar": "absolute bottom-0 left-0 w-full bg-white border-t border-gray-100 px-4 py-3 pb-safe z-50"
   },
   "motion": {
-    "hover": "Subtle border color shifts (border-white/10 to border-white/30). For CTAs, slight scale (scale-[1.02]) and color brighten.",
-    "transitions": "transition-colors duration-200 ease-in-out. DO NOT use 'transition-all'.",
-    "loading": "Use minimal progress bars with brand primary color."
+    "micro_interactions": [
+      "Hover scale on cards (scale-[0.98])",
+      "Tap scale on buttons (active:scale-95)",
+      "Smooth slide-up for bottom sheets and drawers"
+    ],
+    "page_transitions": "Fade and slide-in for new screens"
   },
   "accessibility": {
-    "contrast": "Text must meet APCA or WCAG AA standards. Ensure hover states explicitly declare text color.",
-    "focus": "focus:ring-2 focus:ring-[#39FF14] focus:outline-none.",
-    "data_testid": "ALL interactive elements (buttons, links, form inputs, schedule cards) MUST have data-testid attributes (e.g. data-testid='enroll-class-button')."
+    "contrast_ratio": "Ensure >4.5:1 for text on backgrounds",
+    "touch_targets": "Minimum 44x44px for all buttons and interactive elements",
+    "testing": "All interactive and key informational elements MUST include a data-testid attribute"
   },
   "media": {
-    "images": [
-      {
-        "url": "https://images.unsplash.com/photo-1526506118085-60ce8714f8c5?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzNDR8MHwxfHNlYXJjaHwxfHxneW0lMjB0cmFpbmluZyUyMGFjdGlvbnxlbnwwfHx8fDE3ODYyNjcwMjF8MA&ixlib=rb-4.1.0&q=85",
-        "category": "hero_background",
-        "description": "Grayscale man working out. Use in marketing hero with heavy overlay (bg-black/70) to let neon text pop."
-      },
-      {
-        "url": "https://images.unsplash.com/photo-1545151414-8a948e1ea54f?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzOTB8MHwxfHNlYXJjaHwxfHx0ZW5uaXMlMjBjb2FjaGluZyUyMHNwb3J0c3xlbnwwfHx8fDE3ODYyNjcwMjF8MA&ixlib=rb-4.1.0&q=85",
-        "category": "class_category_thumbnail",
-        "description": "Woman playing tennis from above. Use for 'Sports Coaching' category card."
-      },
-      {
-        "url": "https://images.unsplash.com/photo-1651077837628-52b3247550ae?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDQ2NDF8MHwxfHNlYXJjaHwxfHx5b2dhJTIwY2xhc3MlMjBzdHVkaW98ZW58MHx8fHwxNzg2MjY3MDIxfDA&ixlib=rb-4.1.0&q=85",
-        "category": "class_category_thumbnail",
-        "description": "Yoga class studio. Use for 'Wellness/Other Activities' category card."
-      }
-    ]
+    "images": "Use border-radius on images to match container, avoid hard edges",
+    "icons": "lucide-react for all system icons"
   },
   "3d_libraries": {
-    "recommendation": "Not strictly necessary for the MVP dashboard. Use lightweight Framer Motion for simple list staggering."
+    "required": false,
+    "reason": "Not necessary for this service booking mobile app context, focus on fast 2D interfaces."
   },
-  "instructions_to_main_agent": {
-    "file_extensions": "Use .js and .jsx for React components, NOT .tsx.",
-    "shadcn_customization": "Heavily customize Shadcn components in ui folder to remove defaults. Strip shadows, use sharp borders (border-white/10), dark backgrounds (#141414).",
-    "routing": "Ensure dashboard layout is shared across Customer, Provider, and Admin views with contextual sidebar navigation.",
-    "data_fetching": "Implement distinct views for /dashboard/customer, /dashboard/provider, and /dashboard/admin."
+  "components": {
+    "bottom_navigation": {
+      "description": "Fixed bottom bar with 3-5 icons (Home, Bookings, Profile). Active state in primary purple.",
+      "classes": "flex justify-around items-center pt-2 pb-1"
+    },
+    "service_card": {
+      "description": "Card with image, title, price, and 'Add' button. Used in vertical lists.",
+      "classes": "flex gap-4 p-4 bg-white rounded-2xl shadow-sm border border-gray-100"
+    },
+    "category_chip": {
+      "description": "Horizontal scrollable list of sub-categories. Selected state is solid purple.",
+      "classes": "px-4 py-2 rounded-full border whitespace-nowrap text-sm font-medium"
+    },
+    "sticky_checkout_bar": {
+      "description": "Bottom bar showing total price/items and primary CTA button.",
+      "classes": "absolute bottom-0 left-0 w-full flex justify-between items-center bg-white p-4 border-t border-gray-200 shadow-[0_-4px_10px_-2px_rgba(0,0,0,0.05)] z-40"
+    }
   },
-  "UNIVERSAL_GUIDELINES_FOR_MAIN_AGENT": [
-    "You MUST NOT apply universal transition (e.g., transition: all). Add transitions for specific interactive elements like button, input.",
-    "You MUST NOT center align the app container (.App { text-align: center; }).",
-    "Use 2-3x more spacing than feels comfortable. Cramped designs look cheap.",
-    "Every interaction needs micro-animations - hover states, transitions, entrance animations.",
-    "DO NOT use dark colors as gradients.",
-    "NEVER use completely transparent backgrounds for dropdowns or modals. Always use a solid dark background or heavy glassmorphism.",
-    "ALL interactive elements MUST include a data-testid attribute in kebab-case."
+  "image_urls": {
+    "hero_banner": {
+      "url": "https://images.unsplash.com/photo-1634449571010-02389ed0f9b0",
+      "description": "Woman getting a haircut, used for Home or Salon category hero."
+    },
+    "category_yoga": {
+      "url": "https://images.unsplash.com/photo-1518611012118-696072aa579a",
+      "description": "Women doing yoga, used for Fitness/Yoga service card or category."
+    },
+    "category_art": {
+      "url": "https://images.pexels.com/photos/19598121/pexels-photo-19598121.jpeg",
+      "description": "Person painting in a workshop, used for Art/Drawing category."
+    },
+    "category_fitness": {
+      "url": "https://images.pexels.com/photos/3984353/pexels-photo-3984353.jpeg",
+      "description": "Women practicing yoga in gym, use as an alternate or subcategory image."
+    }
+  },
+  "instructions_to_main_agent": [
+    "Build a mobile-first UI restricted to `max-w-md mx-auto` to simulate an app experience on desktop browsers. The container should have a full height with internal scrolling.",
+    "The primary accent color MUST be a vibrant purple (#6D28D9 / Tailwind violet-700). Use it for CTAs, selected tabs, and highlights.",
+    "Add `@import` for Outfit and DM Sans fonts in index.css. Apply Outfit to headings and DM Sans to body.",
+    "Use Shadcn UI components but heavily customize them. For bottom sheets, use the Drawer component.",
+    "Do not use fully transparent backgrounds for overlays or sticky headers; always use a solid color or backdrop blur.",
+    "Implement the sticky 'Add to cart' bottom bar as requested, with quantity steppers.",
+    "Ensure all interactive elements have data-testid attributes for testing.",
+    "Include a date + time-slot selector step where time slots are a grid of buttons, and the selected slot turns purple."
+  ],
+  "UNIVERSAL GUIDELINES FOR MAIN AGENT": [
+    "You tend to converge toward generic, 'on distribution' outputs. Avoid this: make creative, distinctive frontends.",
+    "No generic centered layouts; use left-aligned content with clear visual hierarchy.",
+    "Do not apply `transition: all` universally. Target specific properties.",
+    "Use pill-shaped (`rounded-full`) or highly rounded (`rounded-2xl`) cards to match modern mobile app aesthetics.",
+    "Ensure micro-animations on interaction (active:scale-95 on buttons)."
   ]
 }
