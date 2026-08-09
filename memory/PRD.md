@@ -1,4 +1,15 @@
-# FitConnect — Activity Classes Marketplace
+# URU — Activities & Services Booking Marketplace
+
+> Pivoted from "FitConnect" (fitness-only dark dashboard) to **URU**: a generic, mobile-first, Urban-Company-style booking app (salon, fitness, art, karate, skating, dance, music, yoga, swimming, tutoring). Light theme, purple (#6D28D9) accent.
+
+## Iteration 2 (2026-08-09) — URU redesign
+- Rebranded to URU; generic 10-category catalog.
+- Customer app is mobile-first (max-w-md) with bottom tabs: Home (category grid + service cards), ServicePage (add-to-cart items with qty steppers), Cart, Checkout (Address → Date/Time slot → Summary → Confirm), My Bookings, Account.
+- Data model change: service `classes/enrollments` → embedded `items` + `bookings`. Booking is FREE (INR prices shown; pay provider directly). Server computes booking total from item prices.
+- Provider console & Admin console moved to `/manage/*` (light theme). Provider manages services + items; admin approves providers & moderates services.
+- Verified: 20/20 backend tests pass; full customer booking flow passes with real UI taps (fixed cart Proceed z-index occlusion + confirm→bookings redirect).
+
+
 
 ## Original Problem Statement
 Build an app where users subscribe to classes for different activities (gym training, sports coaching, wellness/other) offered by professionals. Service providers self-register and create schedules; an admin controls what's visible to customers; customers browse activities, view class schedules and enroll/subscribe (free). Basic structure to build upon.

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { ArrowLeft, MapPin, CheckCircle2 } from "lucide-react";
@@ -25,8 +25,10 @@ export default function Checkout() {
   const [date, setDate] = useState(nextDays(1)[0]);
   const [slot, setSlot] = useState("");
   const [placing, setPlacing] = useState(false);
+  const placedRef = useRef(false);
 
   useEffect(() => {
+    if (placedRef.current) return;
     if (!cart || count === 0) navigate("/app/cart", { replace: true });
   }, [cart, count, navigate]);
   useEffect(() => { api.get("/timeslots").then((r) => setSlots(r.data)); }, []);
@@ -40,6 +42,7 @@ export default function Checkout() {
     try {
       const items = Object.values(cart.lines).map((l) => ({ item_id: l.item.id, qty: l.qty }));
       await api.post("/bookings", { service_id: cart.serviceId, items, date, time_slot: slot, address });
+      placedRef.current = true;
       clearCart();
       toast.success("Booking confirmed!");
       navigate("/app/bookings", { replace: true });

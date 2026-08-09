@@ -10,7 +10,7 @@ export default function ServicePage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [svc, setSvc] = useState(null);
-  const { cart, addItem, decItem, count, total } = useCart();
+  const { cart, addItem, decItem } = useCart();
 
   useEffect(() => {
     api.get(`/services/${id}`).then((r) => setSvc(r.data));
@@ -106,23 +106,6 @@ export default function ServicePage() {
           })}
         </div>
       </div>
-
-      {/* Sticky cart bar */}
-      {count > 0 && cart?.serviceId === svc.id && (
-        <div className="absolute bottom-0 left-0 w-full bg-white border-t border-gray-200 px-4 py-3 flex items-center justify-between shadow-[0_-4px_10px_-2px_rgba(0,0,0,0.05)] z-40">
-          <div>
-            <p className="text-xs text-gray-500">{count} item{count > 1 ? "s" : ""}</p>
-            <p className="text-base font-bold text-gray-900">{fmt(total)}</p>
-          </div>
-          <button
-            data-testid="goto-cart-button"
-            onClick={() => navigate("/app/cart")}
-            className="px-8 py-3 rounded-full bg-[#6D28D9] text-white font-semibold text-sm active:scale-95 transition-transform"
-          >
-            View cart
-          </button>
-        </div>
-      )}
     </div>
   );
 }
