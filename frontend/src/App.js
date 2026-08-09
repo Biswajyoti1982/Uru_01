@@ -2,26 +2,25 @@ import React from "react";
 import "@/App.css";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { Toaster } from "@/components/ui/sonner";
-import { AuthProvider, useAuth } from "@/context/AuthContext";
+import { AuthProvider } from "@/context/AuthContext";
+import { CartProvider } from "@/context/CartContext";
 import AuthCallback from "@/components/AuthCallback";
 import ProtectedRoute from "@/components/ProtectedRoute";
-import Landing from "@/components/Landing";
-import DashboardLayout from "@/components/DashboardLayout";
-import Browse from "@/pages/customer/Browse";
-import ActivityDetail from "@/pages/customer/ActivityDetail";
-import MyEnrollments from "@/pages/customer/MyEnrollments";
-import BecomeProvider from "@/pages/provider/BecomeProvider";
-import ProviderServices from "@/pages/provider/ProviderServices";
-import ProviderEnrollments from "@/pages/provider/ProviderEnrollments";
-import AdminOverview from "@/pages/admin/AdminOverview";
-import AdminProviders from "@/pages/admin/AdminProviders";
-import AdminServices from "@/pages/admin/AdminServices";
-
-const DashboardIndex = () => {
-  const { user } = useAuth();
-  if (user?.role === "admin") return <Navigate to="/app/admin" replace />;
-  return <Navigate to="/app/browse" replace />;
-};
+import Landing from "@/components/URULanding";
+import CustomerLayout from "@/components/CustomerLayout";
+import ManageLayout from "@/components/ManageLayout";
+import Home from "@/customer/Home";
+import ServicePage from "@/customer/ServicePage";
+import Cart from "@/customer/Cart";
+import Checkout from "@/customer/Checkout";
+import Bookings from "@/customer/Bookings";
+import Account from "@/customer/Account";
+import Onboard from "@/provider/Onboard";
+import ProviderDashboard from "@/provider/Dashboard";
+import ProviderBookings from "@/provider/ProviderBookings";
+import AdminOverview from "@/admin/Overview";
+import AdminProviders from "@/admin/Providers";
+import AdminServices from "@/admin/Services";
 
 function AppRouter() {
   const location = useLocation();
@@ -31,25 +30,26 @@ function AppRouter() {
   return (
     <Routes>
       <Route path="/" element={<Landing />} />
-      <Route
-        path="/app"
-        element={
-          <ProtectedRoute>
-            <DashboardLayout />
-          </ProtectedRoute>
-        }
-      >
-        <Route index element={<DashboardIndex />} />
-        <Route path="browse" element={<Browse />} />
-        <Route path="activity/:id" element={<ActivityDetail />} />
-        <Route path="enrollments" element={<MyEnrollments />} />
-        <Route path="become-provider" element={<BecomeProvider />} />
-        <Route path="provider/services" element={<ProviderServices />} />
-        <Route path="provider/enrollments" element={<ProviderEnrollments />} />
+
+      <Route path="/app" element={<ProtectedRoute><CustomerLayout /></ProtectedRoute>}>
+        <Route index element={<Home />} />
+        <Route path="service/:id" element={<ServicePage />} />
+        <Route path="cart" element={<Cart />} />
+        <Route path="checkout" element={<Checkout />} />
+        <Route path="bookings" element={<Bookings />} />
+        <Route path="account" element={<Account />} />
+        <Route path="become-provider" element={<Onboard />} />
+      </Route>
+
+      <Route path="/manage" element={<ProtectedRoute><ManageLayout /></ProtectedRoute>}>
+        <Route index element={<Navigate to="/manage/provider/services" replace />} />
+        <Route path="provider/services" element={<ProviderDashboard />} />
+        <Route path="provider/bookings" element={<ProviderBookings />} />
         <Route path="admin" element={<AdminOverview />} />
         <Route path="admin/providers" element={<AdminProviders />} />
         <Route path="admin/services" element={<AdminServices />} />
       </Route>
+
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
@@ -60,8 +60,10 @@ function App() {
     <div className="App">
       <BrowserRouter>
         <AuthProvider>
-          <AppRouter />
-          <Toaster position="top-right" theme="dark" />
+          <CartProvider>
+            <AppRouter />
+            <Toaster position="top-center" />
+          </CartProvider>
         </AuthProvider>
       </BrowserRouter>
     </div>

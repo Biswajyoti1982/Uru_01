@@ -25,10 +25,19 @@ ADMIN_EMAIL = "rrlfnlstrategy@gmail.com"
 EMERGENT_SESSION_URL = "https://demobackend.emergentagent.com/auth/v1/env/oauth/session-data"
 
 CATEGORIES = [
-    {"id": "gym", "label": "Gym Training"},
-    {"id": "sports", "label": "Sports Coaching"},
-    {"id": "wellness", "label": "Wellness & Other"},
+    {"id": "salon", "label": "Salon & Spa", "icon": "scissors"},
+    {"id": "fitness", "label": "Fitness & Gym", "icon": "dumbbell"},
+    {"id": "art", "label": "Drawing & Art", "icon": "palette"},
+    {"id": "karate", "label": "Martial Arts", "icon": "swords"},
+    {"id": "skating", "label": "Skating", "icon": "footprints"},
+    {"id": "dance", "label": "Dance", "icon": "music"},
+    {"id": "music", "label": "Music", "icon": "guitar"},
+    {"id": "yoga", "label": "Yoga", "icon": "heart-pulse"},
+    {"id": "swimming", "label": "Swimming", "icon": "waves"},
+    {"id": "tutoring", "label": "Tutoring", "icon": "graduation-cap"},
 ]
+
+TIME_SLOTS = ["09:00", "10:00", "11:00", "12:00", "14:00", "15:00", "16:00", "17:00", "18:00", "19:00"]
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -41,25 +50,39 @@ class ProviderApply(BaseModel):
     phone: str = ""
 
 
+class ServiceItem(BaseModel):
+    name: str
+    price: float
+    duration_min: int = 60
+
+
 class ServiceCreate(BaseModel):
     title: str
     description: str = ""
     category: str
     image_url: str = ""
-    level: str = "All Levels"
     location: str = ""
+    items: List[ServiceItem] = []
 
 
-class ClassCreate(BaseModel):
-    title: str
-    date: str          # YYYY-MM-DD
-    start_time: str    # HH:MM
-    end_time: str      # HH:MM
-    capacity: int = 10
+class ItemCreate(BaseModel):
+    name: str
+    price: float
+    duration_min: int = 60
 
 
-class EnrollCreate(BaseModel):
-    class_id: str
+class BookingItem(BaseModel):
+    item_id: str
+    qty: int = 1
+
+
+class BookingCreate(BaseModel):
+    service_id: str
+    items: List[BookingItem]
+    date: str
+    time_slot: str
+    address: str
+    notes: str = ""
 
 
 # ---------------- Auth helpers ----------------
@@ -99,14 +122,10 @@ async def require_provider(user=Depends(get_current_user)):
     return user
 
 
-async def enrolled_count(class_id: str) -> int:
-    return await db.enrollments.count_documents({"class_id": class_id})
-
-
 # ---------------- Auth routes ----------------
 @api_router.get("/")
 async def root():
-    return {"message": "FitConnect API"}
+    return {"message": "URU API"}
 
 
 @api_router.get("/categories")
@@ -198,11 +217,12 @@ async def get_service(service_id: str):
     svc = await db.services.find_one({"id": service_id}, {"_id": 0})
     if not svc:
         raise HTTPException(status_code=404, detail="Service not found")
-    classes = await db.classes.find({"service_id": service_id}, {"_id": 0}).sort("date", 1).to_list(500)
-    for cl in classes:
-        cl["enrolled_count"] = await enrolled_count(cl["id"])
-    svc["classes"] = classes
     return svc
+
+
+@api_router.get("/timeslots")
+async def get_timeslots():
+    return TIME_SLOTS
 
 
 # ---------------- Provider service management ----------------
@@ -210,8 +230,17 @@ async def get_service(service_id: str):
 async def provider_services(user=Depends(require_provider)):
     services = await db.services.find({"provider_id": user["user_id"]}, {"_id": 0}).sort("created_at", -1).to_list(500)
     for svc in services:
-        svc["class_count"] = await db.classes.count_documents({"service_id": svc["id"]})
+        svc["booking_count"] = await db.bookings.count_documents({"service_id": svc["id"], "status": "confirmed"})
     return services
+
+
+def _mk_items(items):
+    out = []
+    for it in items:
+        d = it.model_dump()
+        d["id"] = f"item_{uuid.uuid4().hex[:10]}"
+        out.append(d)
+    return out
 
 
 @api_router.post("/provider/services")
@@ -227,8 +256,8 @@ async def create_service(body: ServiceCreate, user=Depends(require_provider)):
         "description": body.description,
         "category": body.category,
         "image_url": body.image_url,
-        "level": body.level,
         "location": body.location,
+        "items": _mk_items(body.items),
         "status": "pending",
         "is_visible": True,
         "created_at": datetime.now(timezone.utc).isoformat(),
@@ -244,7 +273,7 @@ async def update_service(service_id: str, body: ServiceCreate, user=Depends(requ
         raise HTTPException(status_code=404, detail="Service not found")
     await db.services.update_one({"id": service_id}, {"$set": {
         "title": body.title, "description": body.description, "category": body.category,
-        "image_url": body.image_url, "level": body.level, "location": body.location,
+        "image_url": body.image_url, "location": body.location, "items": _mk_items(body.items),
         "status": "pending",
     }})
     return await db.services.find_one({"id": service_id}, {"_id": 0})
@@ -256,104 +285,90 @@ async def delete_service(service_id: str, user=Depends(require_provider)):
     if not svc or svc["provider_id"] != user["user_id"]:
         raise HTTPException(status_code=404, detail="Service not found")
     await db.services.delete_one({"id": service_id})
-    await db.classes.delete_many({"service_id": service_id})
-    await db.enrollments.delete_many({"service_id": service_id})
+    await db.bookings.delete_many({"service_id": service_id})
     return {"ok": True}
 
 
-@api_router.get("/provider/services/{service_id}/classes")
-async def provider_service_classes(service_id: str, user=Depends(require_provider)):
+@api_router.post("/provider/services/{service_id}/items")
+async def add_item(service_id: str, body: ItemCreate, user=Depends(require_provider)):
     svc = await db.services.find_one({"id": service_id}, {"_id": 0})
     if not svc or svc["provider_id"] != user["user_id"]:
         raise HTTPException(status_code=404, detail="Service not found")
-    classes = await db.classes.find({"service_id": service_id}, {"_id": 0}).sort("date", 1).to_list(500)
-    for cl in classes:
-        cl["enrolled_count"] = await enrolled_count(cl["id"])
-    return classes
+    item = {"id": f"item_{uuid.uuid4().hex[:10]}", "name": body.name, "price": body.price, "duration_min": body.duration_min}
+    await db.services.update_one({"id": service_id}, {"$push": {"items": item}})
+    return item
 
 
-@api_router.post("/provider/services/{service_id}/classes")
-async def create_class(service_id: str, body: ClassCreate, user=Depends(require_provider)):
+@api_router.delete("/provider/services/{service_id}/items/{item_id}")
+async def delete_item(service_id: str, item_id: str, user=Depends(require_provider)):
     svc = await db.services.find_one({"id": service_id}, {"_id": 0})
     if not svc or svc["provider_id"] != user["user_id"]:
         raise HTTPException(status_code=404, detail="Service not found")
-    class_id = f"cls_{uuid.uuid4().hex[:12]}"
-    doc = {
-        "id": class_id,
-        "service_id": service_id,
-        "provider_id": user["user_id"],
-        "title": body.title,
-        "date": body.date,
-        "start_time": body.start_time,
-        "end_time": body.end_time,
-        "capacity": body.capacity,
-        "created_at": datetime.now(timezone.utc).isoformat(),
-    }
-    await db.classes.insert_one(doc)
-    return await db.classes.find_one({"id": class_id}, {"_id": 0})
-
-
-@api_router.delete("/provider/classes/{class_id}")
-async def delete_class(class_id: str, user=Depends(require_provider)):
-    cl = await db.classes.find_one({"id": class_id}, {"_id": 0})
-    if not cl or cl["provider_id"] != user["user_id"]:
-        raise HTTPException(status_code=404, detail="Class not found")
-    await db.classes.delete_one({"id": class_id})
-    await db.enrollments.delete_many({"class_id": class_id})
+    await db.services.update_one({"id": service_id}, {"$pull": {"items": {"id": item_id}}})
     return {"ok": True}
 
 
-@api_router.get("/provider/enrollments")
-async def provider_enrollments(user=Depends(require_provider)):
-    enrollments = await db.enrollments.find({"provider_id": user["user_id"]}, {"_id": 0}).sort("created_at", -1).to_list(1000)
-    return enrollments
+@api_router.get("/provider/bookings")
+async def provider_bookings(user=Depends(require_provider)):
+    bookings = await db.bookings.find({"provider_id": user["user_id"]}, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    return bookings
 
 
-# ---------------- Enrollments (customer) ----------------
-@api_router.post("/enrollments")
-async def enroll(body: EnrollCreate, user=Depends(get_current_user)):
-    cl = await db.classes.find_one({"id": body.class_id}, {"_id": 0})
-    if not cl:
-        raise HTTPException(status_code=404, detail="Class not found")
-    existing = await db.enrollments.find_one({"class_id": body.class_id, "customer_id": user["user_id"]}, {"_id": 0})
-    if existing:
-        raise HTTPException(status_code=400, detail="Already enrolled")
-    count = await enrolled_count(body.class_id)
-    if count >= cl["capacity"]:
-        raise HTTPException(status_code=400, detail="Class is full")
-    svc = await db.services.find_one({"id": cl["service_id"]}, {"_id": 0})
-    enrollment_id = f"enr_{uuid.uuid4().hex[:12]}"
+# ---------------- Bookings (customer) ----------------
+@api_router.post("/bookings")
+async def create_booking(body: BookingCreate, user=Depends(get_current_user)):
+    svc = await db.services.find_one({"id": body.service_id}, {"_id": 0})
+    if not svc:
+        raise HTTPException(status_code=404, detail="Service not found")
+    item_map = {i["id"]: i for i in svc.get("items", [])}
+    if not body.items:
+        raise HTTPException(status_code=400, detail="No items selected")
+    line_items = []
+    total = 0.0
+    for bi in body.items:
+        it = item_map.get(bi.item_id)
+        if not it:
+            raise HTTPException(status_code=400, detail="Invalid item")
+        qty = max(1, bi.qty)
+        line_items.append({"item_id": it["id"], "name": it["name"], "price": it["price"], "qty": qty, "duration_min": it.get("duration_min", 60)})
+        total += it["price"] * qty
+    booking_id = f"bkg_{uuid.uuid4().hex[:12]}"
     doc = {
-        "id": enrollment_id,
-        "class_id": body.class_id,
-        "service_id": cl["service_id"],
-        "service_title": svc["title"] if svc else "",
-        "class_title": cl["title"],
-        "class_date": cl["date"],
-        "class_start": cl["start_time"],
-        "class_end": cl["end_time"],
-        "provider_id": cl["provider_id"],
+        "id": booking_id,
+        "service_id": svc["id"],
+        "service_title": svc["title"],
+        "service_image": svc.get("image_url", ""),
+        "category": svc["category"],
+        "provider_id": svc["provider_id"],
+        "provider_name": svc.get("provider_name", ""),
         "customer_id": user["user_id"],
         "customer_name": user.get("name", ""),
         "customer_email": user.get("email", ""),
+        "items": line_items,
+        "total": round(total, 2),
+        "date": body.date,
+        "time_slot": body.time_slot,
+        "address": body.address,
+        "notes": body.notes,
+        "status": "confirmed",
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
-    await db.enrollments.insert_one(doc)
-    return await db.enrollments.find_one({"id": enrollment_id}, {"_id": 0})
+    await db.bookings.insert_one(doc)
+    return await db.bookings.find_one({"id": booking_id}, {"_id": 0})
 
 
-@api_router.get("/enrollments/me")
-async def my_enrollments(user=Depends(get_current_user)):
-    enrollments = await db.enrollments.find({"customer_id": user["user_id"]}, {"_id": 0}).sort("class_date", 1).to_list(1000)
-    return enrollments
+@api_router.get("/bookings/me")
+async def my_bookings(user=Depends(get_current_user)):
+    bookings = await db.bookings.find({"customer_id": user["user_id"]}, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    return bookings
 
 
-@api_router.delete("/enrollments/{enrollment_id}")
-async def unenroll(enrollment_id: str, user=Depends(get_current_user)):
-    enr = await db.enrollments.find_one({"id": enrollment_id}, {"_id": 0})
-    if not enr or enr["customer_id"] != user["user_id"]:
-        raise HTTPException(status_code=404, detail="Enrollment not found")
-    await db.enrollments.delete_one({"id": enrollment_id})
+@api_router.delete("/bookings/{booking_id}")
+async def cancel_booking(booking_id: str, user=Depends(get_current_user)):
+    bkg = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
+    if not bkg or bkg["customer_id"] != user["user_id"]:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    await db.bookings.update_one({"id": booking_id}, {"$set": {"status": "cancelled"}})
     return {"ok": True}
 
 
@@ -366,8 +381,7 @@ async def admin_stats(user=Depends(require_admin)):
         "pending_providers": await db.users.count_documents({"provider_status": "pending"}),
         "services": await db.services.count_documents({}),
         "pending_services": await db.services.count_documents({"status": "pending"}),
-        "classes": await db.classes.count_documents({}),
-        "enrollments": await db.enrollments.count_documents({}),
+        "bookings": await db.bookings.count_documents({"status": "confirmed"}),
     }
 
 
@@ -404,7 +418,7 @@ async def admin_services(status: Optional[str] = None, user=Depends(require_admi
         query["status"] = status
     services = await db.services.find(query, {"_id": 0}).sort("created_at", -1).to_list(500)
     for svc in services:
-        svc["class_count"] = await db.classes.count_documents({"service_id": svc["id"]})
+        svc["item_count"] = len(svc.get("items", []))
     return services
 
 
@@ -433,83 +447,61 @@ async def toggle_visibility(service_id: str, user=Depends(require_admin)):
 async def seed_data():
     if await db.services.count_documents({}) > 0:
         return
-    provider_id = "user_demoprovider01"
-    existing = await db.users.find_one({"user_id": provider_id})
-    if not existing:
-        await db.users.insert_one({
-            "user_id": provider_id,
-            "email": "demo.coach@fitconnect.app",
-            "name": "Alex Rivera",
-            "picture": "",
-            "role": "provider",
-            "provider_status": "approved",
-            "business_name": "Iron Forge Athletics",
-            "bio": "Certified strength & conditioning coach with 10+ years of experience.",
-            "phone": "+1 555 0100",
-            "created_at": datetime.now(timezone.utc).isoformat(),
-        })
 
-    def future(days):
-        return (datetime.now(timezone.utc) + timedelta(days=days)).strftime("%Y-%m-%d")
+    def item(name, price, dur=60):
+        return {"id": f"item_{uuid.uuid4().hex[:10]}", "name": name, "price": price, "duration_min": dur}
+
+    providers = [
+        {"user_id": "user_demoprov_salon", "email": "glam@uru.app", "name": "Priya Kapoor", "business_name": "Glam Studio", "bio": "Premium salon & spa at your doorstep.", "phone": "+91 90000 10001"},
+        {"user_id": "user_demoprov_art", "email": "art@uru.app", "name": "Rahul Mehta", "business_name": "Little Picasso Art", "bio": "Drawing, painting & sketching classes for all ages.", "phone": "+91 90000 10002"},
+        {"user_id": "user_demoprov_dojo", "email": "dojo@uru.app", "name": "Kenji Sato", "business_name": "Dragon Dojo", "bio": "Traditional karate, self-defense & skating coaching.", "phone": "+91 90000 10003"},
+    ]
+    for p in providers:
+        if not await db.users.find_one({"user_id": p["user_id"]}):
+            await db.users.insert_one({**p, "picture": "", "role": "provider", "provider_status": "approved", "created_at": datetime.now(timezone.utc).isoformat()})
 
     samples = [
-        {
-            "title": "Strength & Power Bootcamp",
-            "description": "High-intensity barbell and conditioning circuit built to add raw strength and explosive power.",
-            "category": "gym",
-            "image_url": "https://images.unsplash.com/photo-1526506118085-60ce8714f8c5?crop=entropy&cs=srgb&fm=jpg&q=85",
-            "level": "Intermediate",
-            "location": "Iron Forge Studio A",
-            "classes": [
-                {"title": "Lower Body Power", "date": future(2), "start_time": "07:00", "end_time": "08:00", "capacity": 12},
-                {"title": "Upper Body Strength", "date": future(4), "start_time": "18:00", "end_time": "19:00", "capacity": 12},
-            ],
-        },
-        {
-            "title": "Elite Tennis Coaching",
-            "description": "One-on-group technical coaching covering footwork, serve mechanics and match strategy.",
-            "category": "sports",
-            "image_url": "https://images.unsplash.com/photo-1545151414-8a948e1ea54f?crop=entropy&cs=srgb&fm=jpg&q=85",
-            "level": "All Levels",
-            "location": "Center Court Club",
-            "classes": [
-                {"title": "Serve & Volley Clinic", "date": future(3), "start_time": "09:00", "end_time": "10:30", "capacity": 8},
-            ],
-        },
-        {
-            "title": "Vinyasa Flow Yoga",
-            "description": "Breath-led flowing yoga to build mobility, balance and calm focus.",
-            "category": "wellness",
-            "image_url": "https://images.unsplash.com/photo-1651077837628-52b3247550ae?crop=entropy&cs=srgb&fm=jpg&q=85",
-            "level": "Beginner",
-            "location": "Zen Wellness Loft",
-            "classes": [
-                {"title": "Morning Flow", "date": future(1), "start_time": "06:30", "end_time": "07:30", "capacity": 20},
-                {"title": "Evening Unwind", "date": future(5), "start_time": "19:00", "end_time": "20:00", "capacity": 20},
-            ],
-        },
+        {"provider": "user_demoprov_salon", "provider_name": "Glam Studio", "title": "Salon Classic at Home", "category": "salon",
+         "description": "Salon-grade grooming and beauty services in the comfort of your home.",
+         "image_url": "https://images.unsplash.com/photo-1634449571010-02389ed0f9b0?crop=entropy&cs=srgb&fm=jpg&q=85&w=1200",
+         "location": "Bandra, Mumbai",
+         "items": [item("Haircut & Styling", 499, 45), item("Facial Glow", 899, 60), item("Manicure & Pedicure", 799, 75), item("Head Massage", 399, 30)]},
+        {"provider": "user_demoprov_salon", "provider_name": "Glam Studio", "title": "Bridal Makeup Package", "category": "salon",
+         "description": "Complete bridal makeup with trial session by expert artists.",
+         "image_url": "https://images.unsplash.com/photo-1610047614301-13c63f00c032?crop=entropy&cs=srgb&fm=jpg&q=85&w=1200",
+         "location": "Bandra, Mumbai",
+         "items": [item("Party Makeup", 1499, 60), item("Bridal Makeup", 4999, 120)]},
+        {"provider": "user_demoprov_art", "provider_name": "Little Picasso Art", "title": "Drawing & Painting Classes", "category": "art",
+         "description": "Learn sketching, watercolor and acrylic painting from professional artists.",
+         "image_url": "https://images.unsplash.com/photo-1541753866388-0b3c701627d3?crop=entropy&cs=srgb&fm=jpg&q=85&w=1200",
+         "location": "Koramangala, Bengaluru",
+         "items": [item("Beginner Sketching", 349, 60), item("Watercolor Basics", 449, 90), item("Acrylic Masterclass", 699, 120)]},
+        {"provider": "user_demoprov_dojo", "provider_name": "Dragon Dojo", "title": "Karate & Self-Defense", "category": "karate",
+         "description": "Build discipline, fitness and confidence with certified black-belt instructors.",
+         "image_url": "https://images.unsplash.com/photo-1555597408-26bc8e548a46?crop=entropy&cs=srgb&fm=jpg&q=85&w=1200",
+         "location": "Andheri, Mumbai",
+         "items": [item("Kids Karate (Beginner)", 399, 60), item("Adult Self-Defense", 499, 60), item("Private 1:1 Session", 999, 60)]},
+        {"provider": "user_demoprov_dojo", "provider_name": "Dragon Dojo", "title": "Roller Skating Academy", "category": "skating",
+         "description": "Fun and safe roller skating coaching for kids and beginners.",
+         "image_url": "https://images.unsplash.com/photo-1622640338505-2ad7465bda17?crop=entropy&cs=srgb&fm=jpg&q=85&w=1200",
+         "location": "Andheri, Mumbai",
+         "items": [item("Roller Skating Basics", 349, 60), item("Advanced Skating", 549, 75)]},
     ]
-
     for s in samples:
-        service_id = f"svc_{uuid.uuid4().hex[:12]}"
-        classes = s.pop("classes")
         await db.services.insert_one({
-            "id": service_id,
-            "provider_id": provider_id,
-            "provider_name": "Iron Forge Athletics",
+            "id": f"svc_{uuid.uuid4().hex[:12]}",
+            "provider_id": s["provider"],
+            "provider_name": s["provider_name"],
+            "title": s["title"],
+            "description": s["description"],
+            "category": s["category"],
+            "image_url": s["image_url"],
+            "location": s["location"],
+            "items": s["items"],
             "status": "approved",
             "is_visible": True,
             "created_at": datetime.now(timezone.utc).isoformat(),
-            **s,
         })
-        for cl in classes:
-            await db.classes.insert_one({
-                "id": f"cls_{uuid.uuid4().hex[:12]}",
-                "service_id": service_id,
-                "provider_id": provider_id,
-                "created_at": datetime.now(timezone.utc).isoformat(),
-                **cl,
-            })
     logger.info("Seed data created")
 
 

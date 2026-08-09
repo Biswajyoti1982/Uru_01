@@ -1,13 +1,12 @@
-"""FitConnect backend API tests - auth, provider onboarding, services, enrollments, admin."""
+"""URU backend API tests - auth, services (items), bookings, provider mgmt, admin, RBAC."""
 import os
-import time
 import uuid
 import pytest
 import requests
 from pymongo import MongoClient
 from datetime import datetime, timezone, timedelta
 
-BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://activity-connect-36.preview.emergentagent.com").rstrip("/")
+BASE_URL = os.environ["REACT_APP_BACKEND_URL"].rstrip("/")
 API = f"{BASE_URL}/api"
 
 MONGO_URL = os.environ.get("MONGO_URL", "mongodb://localhost:27017")
@@ -45,19 +44,27 @@ def _create_user_session(role="customer", provider_status=None, email=None):
     return uid, tok
 
 
+def _cleanup_user(uid):
+    _db.bookings.delete_many({"customer_id": uid})
+    _db.bookings.delete_many({"provider_id": uid})
+    _db.services.delete_many({"provider_id": uid})
+    _db.users.delete_one({"user_id": uid})
+    _db.user_sessions.delete_many({"user_id": uid})
+
+
 # -------------------- Auth guard --------------------
 class TestAuthGuard:
     def test_me_unauth(self):
-        r = requests.get(f"{API}/auth/me")
-        assert r.status_code == 401
+        assert requests.get(f"{API}/auth/me").status_code == 401
 
     def test_admin_stats_unauth(self):
-        r = requests.get(f"{API}/admin/stats")
-        assert r.status_code == 401
+        assert requests.get(f"{API}/admin/stats").status_code == 401
 
     def test_provider_services_unauth(self):
-        r = requests.get(f"{API}/provider/services")
-        assert r.status_code == 401
+        assert requests.get(f"{API}/provider/services").status_code == 401
+
+    def test_my_bookings_unauth(self):
+        assert requests.get(f"{API}/bookings/me").status_code == 401
 
     def test_me_admin(self):
         r = requests.get(f"{API}/auth/me", headers=_hdr(ADMIN_TOKEN))
@@ -70,112 +77,131 @@ class TestAuthGuard:
         assert r.json()["role"] == "customer"
 
 
-# -------------------- Public services & categories --------------------
-class TestPublicServices:
+# -------------------- Public --------------------
+class TestPublic:
     def test_categories(self):
         r = requests.get(f"{API}/categories")
         assert r.status_code == 200
-        assert len(r.json()) == 3
+        assert len(r.json()) == 10
+
+    def test_timeslots(self):
+        r = requests.get(f"{API}/timeslots")
+        assert r.status_code == 200
+        assert len(r.json()) == 10
 
     def test_list_services_seeded(self):
         r = requests.get(f"{API}/services")
         assert r.status_code == 200
         data = r.json()
-        assert len(data) >= 3
+        assert len(data) >= 5
         for s in data:
             assert s["status"] == "approved"
             assert s["is_visible"] is True
+            assert isinstance(s.get("items"), list)
 
-    def test_service_detail_with_classes(self):
+    def test_service_detail_items(self):
         services = requests.get(f"{API}/services").json()
         svc_id = services[0]["id"]
         r = requests.get(f"{API}/services/{svc_id}")
         assert r.status_code == 200
         data = r.json()
-        assert "classes" in data
-        assert isinstance(data["classes"], list)
+        assert "items" in data and len(data["items"]) > 0
+        assert "id" in data["items"][0]
+        assert "price" in data["items"][0]
+
+    def test_service_detail_404(self):
+        assert requests.get(f"{API}/services/nonexistent").status_code == 404
 
 
-# -------------------- Customer enrollment flow --------------------
-class TestEnrollmentFlow:
-    def test_full_enroll_flow(self):
-        # Fresh customer
+# -------------------- Booking flow --------------------
+class TestBookingFlow:
+    def test_full_booking_flow(self):
         uid, tok = _create_user_session(role="customer")
         try:
             services = requests.get(f"{API}/services").json()
-            svc = requests.get(f"{API}/services/{services[0]['id']}").json()
-            class_id = svc["classes"][0]["id"]
+            svc = services[0]
+            svc_full = requests.get(f"{API}/services/{svc['id']}").json()
+            items = svc_full["items"]
+            i1, i2 = items[0], items[1] if len(items) > 1 else items[0]
+            expected_total = i1["price"] * 2 + (i2["price"] if i2 is not i1 else 0)
 
-            # enroll
-            r = requests.post(f"{API}/enrollments", json={"class_id": class_id}, headers=_hdr(tok))
+            payload = {
+                "service_id": svc["id"],
+                "items": [{"item_id": i1["id"], "qty": 2}] + (
+                    [{"item_id": i2["id"], "qty": 1}] if i2 is not i1 else []
+                ),
+                "date": "2030-05-05",
+                "time_slot": "10:00",
+                "address": "TEST_Addr, Mumbai",
+                "notes": "gate 5",
+            }
+            r = requests.post(f"{API}/bookings", json=payload, headers=_hdr(tok))
             assert r.status_code == 200, r.text
-            enr = r.json()
-            assert enr["class_id"] == class_id
-            enr_id = enr["id"]
+            bkg = r.json()
+            assert bkg["status"] == "confirmed"
+            assert bkg["total"] == round(expected_total, 2)
+            assert bkg["customer_id"] == uid
+            assert len(bkg["items"]) == len(payload["items"])
+            bkg_id = bkg["id"]
 
-            # duplicate blocked
-            r2 = requests.post(f"{API}/enrollments", json={"class_id": class_id}, headers=_hdr(tok))
-            assert r2.status_code == 400
+            # my bookings
+            mine = requests.get(f"{API}/bookings/me", headers=_hdr(tok)).json()
+            assert any(b["id"] == bkg_id for b in mine)
 
-            # my enrollments
-            r3 = requests.get(f"{API}/enrollments/me", headers=_hdr(tok))
-            assert r3.status_code == 200
-            assert any(e["id"] == enr_id for e in r3.json())
-
-            # unenroll
-            r4 = requests.delete(f"{API}/enrollments/{enr_id}", headers=_hdr(tok))
-            assert r4.status_code == 200
-            assert all(e["id"] != enr_id for e in requests.get(f"{API}/enrollments/me", headers=_hdr(tok)).json())
+            # cancel
+            r = requests.delete(f"{API}/bookings/{bkg_id}", headers=_hdr(tok))
+            assert r.status_code == 200
+            mine = requests.get(f"{API}/bookings/me", headers=_hdr(tok)).json()
+            found = [b for b in mine if b["id"] == bkg_id][0]
+            assert found["status"] == "cancelled"
         finally:
-            _db.enrollments.delete_many({"customer_id": uid})
-            _db.users.delete_one({"user_id": uid})
-            _db.user_sessions.delete_many({"user_id": uid})
+            _cleanup_user(uid)
 
-    def test_enroll_capacity_full(self):
-        # Create a provider + service + class with capacity 1
-        pid, ptok = _create_user_session(role="provider", provider_status="approved")
-        c1uid, c1tok = _create_user_session(role="customer")
-        c2uid, c2tok = _create_user_session(role="customer")
-        try:
-            # Create service via provider
-            sr = requests.post(f"{API}/provider/services", json={
-                "title": "TEST_CapService", "description": "d", "category": "gym"
-            }, headers=_hdr(ptok))
-            assert sr.status_code == 200, sr.text
-            svc_id = sr.json()["id"]
-            # approve
-            requests.post(f"{API}/admin/services/{svc_id}/approve", headers=_hdr(ADMIN_TOKEN))
-            # create class capacity=1
-            cr = requests.post(f"{API}/provider/services/{svc_id}/classes", json={
-                "title": "T", "date": "2030-01-01", "start_time": "10:00", "end_time": "11:00", "capacity": 1
-            }, headers=_hdr(ptok))
-            assert cr.status_code == 200, cr.text
-            class_id = cr.json()["id"]
-
-            r1 = requests.post(f"{API}/enrollments", json={"class_id": class_id}, headers=_hdr(c1tok))
-            assert r1.status_code == 200
-            r2 = requests.post(f"{API}/enrollments", json={"class_id": class_id}, headers=_hdr(c2tok))
-            assert r2.status_code == 400
-            assert "full" in r2.json().get("detail", "").lower()
-        finally:
-            _db.enrollments.delete_many({"provider_id": pid})
-            _db.classes.delete_many({"provider_id": pid})
-            _db.services.delete_many({"provider_id": pid})
-            for u in (pid, c1uid, c2uid):
-                _db.users.delete_one({"user_id": u})
-                _db.user_sessions.delete_many({"user_id": u})
-
-
-# -------------------- Provider onboarding & RBAC --------------------
-class TestProviderOnboarding:
-    def test_apply_then_approve_flow(self):
+    def test_booking_invalid_item(self):
         uid, tok = _create_user_session(role="customer")
         try:
-            # non-approved blocked from provider/services
-            r = requests.get(f"{API}/provider/services", headers=_hdr(tok))
-            assert r.status_code == 403
+            svc = requests.get(f"{API}/services").json()[0]
+            r = requests.post(f"{API}/bookings", json={
+                "service_id": svc["id"],
+                "items": [{"item_id": "bogus_id", "qty": 1}],
+                "date": "2030-01-01", "time_slot": "10:00", "address": "x"
+            }, headers=_hdr(tok))
+            assert r.status_code == 400
+        finally:
+            _cleanup_user(uid)
 
-            # apply
+    def test_booking_empty_items(self):
+        uid, tok = _create_user_session(role="customer")
+        try:
+            svc = requests.get(f"{API}/services").json()[0]
+            r = requests.post(f"{API}/bookings", json={
+                "service_id": svc["id"], "items": [],
+                "date": "2030-01-01", "time_slot": "10:00", "address": "x"
+            }, headers=_hdr(tok))
+            assert r.status_code == 400
+        finally:
+            _cleanup_user(uid)
+
+    def test_booking_invalid_service(self):
+        uid, tok = _create_user_session(role="customer")
+        try:
+            r = requests.post(f"{API}/bookings", json={
+                "service_id": "nope", "items": [{"item_id": "x", "qty": 1}],
+                "date": "2030-01-01", "time_slot": "10:00", "address": "x"
+            }, headers=_hdr(tok))
+            assert r.status_code == 404
+        finally:
+            _cleanup_user(uid)
+
+
+# -------------------- Provider onboarding & mgmt --------------------
+class TestProviderFlow:
+    def test_apply_approve_create_service(self):
+        uid, tok = _create_user_session(role="customer")
+        try:
+            # blocked before approval
+            assert requests.get(f"{API}/provider/services", headers=_hdr(tok)).status_code == 403
+
             r = requests.post(f"{API}/provider/apply", json={
                 "business_name": "TEST_Biz", "bio": "b", "phone": "1"
             }, headers=_hdr(tok))
@@ -183,36 +209,33 @@ class TestProviderOnboarding:
             assert r.json()["provider_status"] == "pending"
 
             # still blocked (pending)
-            r = requests.get(f"{API}/provider/services", headers=_hdr(tok))
-            assert r.status_code == 403
+            assert requests.post(f"{API}/provider/services", json={
+                "title": "x", "category": "salon", "items": []
+            }, headers=_hdr(tok)).status_code == 403
 
             # admin approve
             r = requests.post(f"{API}/admin/providers/{uid}/approve", headers=_hdr(ADMIN_TOKEN))
             assert r.status_code == 200
 
-            # verify role updated
             me = requests.get(f"{API}/auth/me", headers=_hdr(tok)).json()
-            assert me["role"] == "provider"
-            assert me["provider_status"] == "approved"
+            assert me["role"] == "provider" and me["provider_status"] == "approved"
 
-            # now can list provider services
-            r = requests.get(f"{API}/provider/services", headers=_hdr(tok))
-            assert r.status_code == 200
-
-            # create service -> pending
+            # create service with items
             r = requests.post(f"{API}/provider/services", json={
-                "title": "TEST_NewSvc", "description": "d", "category": "wellness"
+                "title": "TEST_Svc", "description": "d", "category": "yoga",
+                "items": [{"name": "Beginner", "price": 299, "duration_min": 60}]
             }, headers=_hdr(tok))
-            assert r.status_code == 200
+            assert r.status_code == 200, r.text
             svc = r.json()
             assert svc["status"] == "pending"
-            assert svc["provider_id"] == uid
+            assert len(svc["items"]) == 1
+            assert svc["items"][0]["id"].startswith("item_")
 
-            # not visible publicly
+            # not in public list
             pub = requests.get(f"{API}/services").json()
             assert all(s["id"] != svc["id"] for s in pub)
 
-            # admin approve service -> visible
+            # admin approve service
             requests.post(f"{API}/admin/services/{svc['id']}/approve", headers=_hdr(ADMIN_TOKEN))
             pub = requests.get(f"{API}/services").json()
             assert any(s["id"] == svc["id"] for s in pub)
@@ -222,54 +245,49 @@ class TestProviderOnboarding:
             pub = requests.get(f"{API}/services").json()
             assert all(s["id"] != svc["id"] for s in pub)
 
-            # add class
-            r = requests.post(f"{API}/provider/services/{svc['id']}/classes", json={
-                "title": "TEST_Cls", "date": "2030-02-02", "start_time": "10:00", "end_time": "11:00", "capacity": 5
+            # add item
+            r = requests.post(f"{API}/provider/services/{svc['id']}/items", json={
+                "name": "Advanced", "price": 599, "duration_min": 90
             }, headers=_hdr(tok))
             assert r.status_code == 200
+            new_item_id = r.json()["id"]
 
-            # provider enrollments endpoint reachable
-            r = requests.get(f"{API}/provider/enrollments", headers=_hdr(tok))
+            # delete item
+            r = requests.delete(f"{API}/provider/services/{svc['id']}/items/{new_item_id}", headers=_hdr(tok))
             assert r.status_code == 200
-        finally:
-            _db.classes.delete_many({"provider_id": uid})
-            _db.services.delete_many({"provider_id": uid})
-            _db.enrollments.delete_many({"provider_id": uid})
-            _db.users.delete_one({"user_id": uid})
-            _db.user_sessions.delete_many({"user_id": uid})
 
-    def test_admin_reject_service(self):
-        # use demo seeded provider - create a temp service via direct insert not possible via API without provider token, so use flow
-        uid, tok = _create_user_session(role="provider", provider_status="approved")
-        try:
-            sr = requests.post(f"{API}/provider/services", json={
-                "title": "TEST_Reject", "description": "d", "category": "sports"
+            # provider bookings
+            r = requests.get(f"{API}/provider/bookings", headers=_hdr(tok))
+            assert r.status_code == 200
+
+            # invalid category
+            r = requests.post(f"{API}/provider/services", json={
+                "title": "bad", "category": "not_real", "items": []
             }, headers=_hdr(tok))
-            svc_id = sr.json()["id"]
-            r = requests.post(f"{API}/admin/services/{svc_id}/reject", headers=_hdr(ADMIN_TOKEN))
+            assert r.status_code == 400
+
+            # delete service
+            r = requests.delete(f"{API}/provider/services/{svc['id']}", headers=_hdr(tok))
             assert r.status_code == 200
-            svc = _db.services.find_one({"id": svc_id}, {"_id": 0})
-            assert svc["status"] == "rejected"
         finally:
-            _db.services.delete_many({"provider_id": uid})
-            _db.users.delete_one({"user_id": uid})
-            _db.user_sessions.delete_many({"user_id": uid})
+            _cleanup_user(uid)
 
 
 # -------------------- RBAC --------------------
 class TestRBAC:
     def test_customer_cannot_hit_admin(self):
-        r = requests.get(f"{API}/admin/stats", headers=_hdr(CUST_TOKEN))
-        assert r.status_code == 403
+        assert requests.get(f"{API}/admin/stats", headers=_hdr(CUST_TOKEN)).status_code == 403
 
     def test_customer_cannot_hit_provider(self):
-        r = requests.get(f"{API}/provider/services", headers=_hdr(CUST_TOKEN))
-        assert r.status_code == 403
+        assert requests.get(f"{API}/provider/services", headers=_hdr(CUST_TOKEN)).status_code == 403
 
     def test_admin_stats_ok(self):
         r = requests.get(f"{API}/admin/stats", headers=_hdr(ADMIN_TOKEN))
         assert r.status_code == 200
         data = r.json()
-        for k in ["customers", "providers", "pending_providers", "services", "pending_services", "classes", "enrollments"]:
-            assert k in data
-            assert isinstance(data[k], int)
+        for k in ["customers", "providers", "pending_providers", "services", "pending_services", "bookings"]:
+            assert k in data and isinstance(data[k], int)
+
+    def test_admin_can_list_providers_and_services(self):
+        assert requests.get(f"{API}/admin/providers", headers=_hdr(ADMIN_TOKEN)).status_code == 200
+        assert requests.get(f"{API}/admin/services", headers=_hdr(ADMIN_TOKEN)).status_code == 200

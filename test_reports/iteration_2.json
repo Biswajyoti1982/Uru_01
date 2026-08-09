@@ -1,0 +1,50 @@
+{
+  "summary": "Rewrote backend pytest suite for URU (auth guards, categories, services w/items, timeslots, booking flow w/ total computation & cancel, invalid item/empty items/invalid service, provider apply->approve->create/add-item/delete-item/delete-service, RBAC). 20/20 backend tests PASS. Frontend flow tested with customer session cookie on mobile viewport (390x844): Home->service card->Add item->Cart (steppers work, total ₹698 for 2x)->Proceed->Checkout Step1 address->Step2 date+slot (slot-continue)->Step3 summary->confirm-booking-button. Booking successfully created (status=confirmed, correct server-computed total ₹349, correct address/slot/date persisted). GET /api/bookings/me returns it. Found one CRITICAL UI bug and one minor bug (see below).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "Cart.jsx footer / CustomerLayout nav",
+        "issue": "The 'Proceed' button on /app/cart is fully occluded by the fixed bottom tab bar. Both are absolutely positioned at bottom-0; the tab-bar nav has z-50 while the proceed footer has z-40, so real user taps on Proceed hit tab-account instead. Verified via elementFromPoint(centerOfProceedButton) => 'tab-account'. Users cannot proceed to checkout via normal tap; the flow only completes when clicking programmatically (or force=True in playwright).",
+        "selector": "[data-testid=\"proceed-checkout-button\"]",
+        "priority": "CRITICAL"
+      },
+      {
+        "component": "Checkout.jsx (step 3 confirm)",
+        "issue": "After confirm-booking-button, user is redirected to /app/cart (empty state with 'Booking confirmed!' toast) instead of /app/bookings as required by spec.",
+        "selector": "[data-testid=\"confirm-booking-button\"]",
+        "priority": "MEDIUM"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Cart", "issues": ["Proceed CTA hidden behind bottom tab bar (see UI bug). Fix: either give the cart page bottom padding and hide the tab bar on Cart/Checkout, or place the Proceed bar with higher z-index above the nav plus a spacer, or convert nav display:none on /app/cart & /app/checkout routes."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/backend_test.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "Fix bottom-nav overlay obscuring Cart 'Proceed' button (raise z-index above nav OR hide CustomerLayout nav on /app/cart and /app/checkout OR convert proceed footer to non-absolute at end of content).",
+    "After confirm booking, navigate to /app/bookings (currently goes to /app/cart)."
+  ],
+  "critical_code_review_comments": [
+    "server.py is 527 lines, mixes models/auth/routes/seed — split into routers as it grows.",
+    "PUT /api/provider/services always resets status='pending' and _replaces_ items with new IDs even on a title-only update (existing item ids lost). Consider preserving existing item IDs on update or only bumping status on material changes.",
+    "DELETE /api/provider/services also deletes all its bookings — customers lose their confirmed booking history silently. Consider soft-cancel or leaving bookings intact.",
+    "provider_apply allows re-apply while status=='pending' or 'rejected', which overwrites prior business_name/bio/phone silently.",
+    "reject_provider / approve_service / reject_service do not 404 on missing id (silent no-op).",
+    "Frontend Cart.jsx uses absolute bottom-0 z-40 while CustomerLayout nav uses absolute bottom-0 z-50 => Proceed unreachable to real users (critical).",
+    "MongoDB _id properly excluded via {'_id': 0}. Auth cookie set with secure=True + sameSite=None correctly for cross-site preview.",
+    "All interactive elements carry kebab-case data-testid — good testability."
+  ],
+  "updated_files": ["/app/backend/tests/backend_test.py"],
+  "success_rate": {"backend": "100% (20/20)", "frontend": "80% (flow completes only via programmatic click; real-user tap on Proceed blocked)"},
+  "test_credentials": "Pre-seeded sessions: admin=test_session_admin_001 (user_adminseed01, rrlfnlstrategy@gmail.com), customer=test_session_cust_001 (user_custseed01). Bearer header or session_token cookie work.",
+  "seed_data_creation": "Backend tests create ephemeral users+sessions and clean up in try/finally. UI test created one booking with address prefix 'TEST_UI' and cleaned up via DELETE /api/bookings/{id}.",
+  "retest_needed": true,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Correct customer flow selectors: service-card-<svcId>, add-item-<itemId>, cart-inc/dec-<itemId>, cart-total, proceed-checkout-button, checkout-address-input, address-continue, date-YYYY-MM-DD, slot-HH:MM, slot-continue, confirm-booking-button, summary-total, tab-home/tab-bookings/tab-account. Customer shell max-w-md; mobile viewport 390x844. Cart is single-service, stored in localStorage (need to add items in the same browser context before hitting /app/checkout). Admin/provider console at /manage; sidebar testids nav-provider-services, nav-provider-bookings, nav-admin-overview, nav-admin-providers, nav-admin-services. Admin route /manage/services returns landing; use sidebar links (which point to /manage/admin/*).",
+  "rca of the issue": "Cart footer container in /app/frontend/src/customer/Cart.jsx line 78 uses `absolute bottom-0 ... z-40`; CustomerLayout global bottom nav uses `absolute bottom-0 ... z-50`. Both anchor to same bottom edge; nav wins on hit-testing, so Proceed button center resolves to tab-account. Fix options: (a) add `pb-24` to the cart scroll area and move Proceed CTA into normal flow; (b) hide the tab nav on /app/cart and /app/checkout; (c) raise z-index of the proceed bar above the nav AND give the nav a top offset. Same pattern likely affects any future full-height page that overlays a bottom CTA."
+}
