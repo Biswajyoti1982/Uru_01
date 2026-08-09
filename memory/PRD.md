@@ -66,3 +66,18 @@ Build an app where users subscribe to classes for different activities (gym trai
 - Each service now stores `available_days` (0=Sun..6=Sat) and `slots` (HH:MM list); replaces the global fixed TIME_SLOTS for booking.
 - Provider service editor has an Availability section (day toggles + time-slot grid). Checkout date row shows only available weekdays and only the provider's slots.
 - Backend validates booking date/slot against the service's availability (400 otherwise). Verified via curl (bad slot→400, good→200) and UI (restricted service shows Mon/Wed/Fri + 3 slots).
+
+
+## Iteration 6 (2026-06) — Virtual/Physical slots + Societies
+- Classes can be **Virtual** or **Physical**. Service `slots` changed from `List[str]` to `List[{time, mode, societies}]` (`SlotConfig`, mode = Literal physical|virtual). Fixed a latent backend bug where slots were typed `List[str]` but code called `.model_dump()`.
+- **Provider Dashboard**: new slot builder — pick time, toggle Physical/Virtual; physical slots require selecting one or more societies (multiselect from `GET /api/societies`). Edit dialog now correctly loads existing slots + available_days.
+- **Customer Checkout**: dynamic step flow `plan → schedule → (address only if physical) → summary`. Physical slot reveals a society picker limited to that slot's societies (required); virtual slots skip address and show an online-joining note. Booking payload sends `mode` + `society_id`.
+- **Admin**: new Societies page at `/manage/admin/societies` (+ sidebar nav) to manage the master society list via `POST /api/admin/societies`.
+- Bookings store `mode`, `society_id`, `society_name`. Backend rejects physical booking without society (400) or a non-offered society (400).
+- Legacy seeded services (string slots) cleared & re-seeded in object format.
+- Verified: testing_agent iteration_3 — backend 11/11 new tests, frontend 6/6 flows, no regressions.
+
+## Backlog (P1/P2)
+- P1: Admin can pin/highlight activities in a top strip on the Home feed.
+- P1: Admin edit/delete activities (currently create-only).
+- P2: Customer pause-subscription (holidays); ratings for completed bookings; email renewal reminders (Resend).

@@ -8,7 +8,7 @@ import re
 import uuid
 from pathlib import Path
 from pydantic import BaseModel, Field
-from typing import List, Optional
+from typing import List, Optional, Literal
 from datetime import datetime, timezone, timedelta
 import httpx
 
@@ -80,7 +80,7 @@ class ServiceItem(BaseModel):
 
 class SlotConfig(BaseModel):
     time: str
-    mode: str = "physical"  # "physical" | "virtual"
+    mode: Literal["physical", "virtual"] = "physical"
     societies: List[str] = []
 
 
