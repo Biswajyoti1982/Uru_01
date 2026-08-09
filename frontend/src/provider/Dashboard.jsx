@@ -2,12 +2,14 @@ import React, { useEffect, useState } from "react";
 import { toast } from "sonner";
 import api from "@/lib/api";
 import { useCategories } from "@/context/CategoriesContext";
-import { fmt } from "@/lib/format";import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Store, Plus, Trash2, Layers, X } from "lucide-react";
+import { fmt } from "@/lib/format";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Store, Plus, Trash2, Layers, X, Video, MapPin } from "lucide-react";
 import { DAY_LABELS, PRESET_SLOTS } from "@/lib/slots";
 
-const emptyService = { title: "", description: "", category: "gym", image_url: "", location: "", available_days: [0, 1, 2, 3, 4, 5, 6], slots: ["09:00", "10:00", "11:00", "16:00", "17:00", "18:00"] };
+const emptyService = { title: "", description: "", category: "gym", image_url: "", location: "", available_days: [0, 1, 2, 3, 4, 5, 6], slots: [] };
 const emptyItem = { name: "", price: "", duration_min: 60 };
+const emptyDraft = { time: "09:00", mode: "physical", societies: [] };
 
 const Badge = ({ status }) => {
   const map = { approved: "bg-emerald-50 text-emerald-600", pending: "bg-amber-50 text-amber-600", rejected: "bg-red-50 text-red-500" };
@@ -17,11 +19,13 @@ const Badge = ({ status }) => {
 export default function ProviderDashboard() {
   const { categories, catMeta } = useCategories();
   const [services, setServices] = useState([]);
+  const [societies, setSocieties] = useState([]);
   const [loading, setLoading] = useState(true);
   const [svcOpen, setSvcOpen] = useState(false);
   const [svcForm, setSvcForm] = useState(emptyService);
   const [items, setItems] = useState([]);
   const [itemForm, setItemForm] = useState(emptyItem);
+  const [draft, setDraft] = useState(emptyDraft);
   const [editId, setEditId] = useState(null);
 
   const load = async () => {
@@ -29,12 +33,14 @@ export default function ProviderDashboard() {
     try { setServices((await api.get("/provider/services")).data); }
     finally { setLoading(false); }
   };
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); api.get("/societies").then((r) => setSocieties(r.data)); }, []);
 
-  const openNew = () => { setSvcForm(emptyService); setItems([]); setItemForm(emptyItem); setEditId(null); setSvcOpen(true); };
+  const socName = (id) => societies.find((s) => s.id === id)?.name || id;
+
+  const openNew = () => { setSvcForm(emptyService); setItems([]); setItemForm(emptyItem); setDraft(emptyDraft); setEditId(null); setSvcOpen(true); };
   const openEdit = (s) => {
-    setSvcForm({ title: s.title, description: s.description, category: s.category, image_url: s.image_url, location: s.location });
-    setItems(s.items || []); setItemForm(emptyItem); setEditId(s.id); setSvcOpen(true);
+    setSvcForm({ title: s.title, description: s.description, category: s.category, image_url: s.image_url, location: s.location, available_days: s.available_days || [0, 1, 2, 3, 4, 5, 6], slots: s.slots || [] });
+    setItems(s.items || []); setItemForm(emptyItem); setDraft(emptyDraft); setEditId(s.id); setSvcOpen(true);
   };
 
   const addLocalItem = () => {
@@ -45,14 +51,24 @@ export default function ProviderDashboard() {
   const removeLocalItem = (id) => setItems(items.filter((i) => i.id !== id));
 
   const toggleDay = (d) => setSvcForm((f) => ({ ...f, available_days: f.available_days.includes(d) ? f.available_days.filter((x) => x !== d) : [...f.available_days, d] }));
-  const toggleSlot = (s) => setSvcForm((f) => ({ ...f, slots: f.slots.includes(s) ? f.slots.filter((x) => x !== s) : [...f.slots, s] }));
+
+  const toggleDraftSociety = (id) => setDraft((d) => ({ ...d, societies: d.societies.includes(id) ? d.societies.filter((x) => x !== id) : [...d.societies, id] }));
+
+  const addSlot = () => {
+    if (draft.mode === "physical" && draft.societies.length === 0) return toast.error("Select at least one society for a physical slot");
+    if (svcForm.slots.some((s) => s.time === draft.time && s.mode === draft.mode)) return toast.error("This slot already exists");
+    const slot = { time: draft.time, mode: draft.mode, societies: draft.mode === "physical" ? draft.societies : [] };
+    setSvcForm((f) => ({ ...f, slots: [...f.slots, slot] }));
+    setDraft(emptyDraft);
+  };
+  const removeSlot = (idx) => setSvcForm((f) => ({ ...f, slots: f.slots.filter((_, i) => i !== idx) }));
 
   const save = async (e) => {
     e.preventDefault();
     if (!svcForm.title.trim()) return toast.error("Title required");
     if (items.length === 0) return toast.error("Add at least one service item");
     if (!svcForm.available_days.length) return toast.error("Select at least one available day");
-    if (!svcForm.slots.length) return toast.error("Select at least one time slot");
+    if (!svcForm.slots.length) return toast.error("Add at least one time slot");
     const payload = { ...svcForm, items: items.map((i) => ({ name: i.name, price: Number(i.price), duration_min: Number(i.duration_min) })) };
     try {
       if (editId) await api.put(`/provider/services/${editId}`, payload);
@@ -100,7 +116,7 @@ export default function ProviderDashboard() {
                 <div className="p-4">
                   <span className="text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full" style={{ background: `${catMeta(s.category).color}18`, color: catMeta(s.category).color }}>{catMeta(s.category).label}</span>
                   <h3 className="font-display text-lg font-bold text-gray-900 mt-1.5">{s.title}</h3>
-                  <p className="text-xs text-gray-500 mt-1 flex items-center gap-1"><Layers className="h-3 w-3" /> {s.items?.length || 0} items · {s.booking_count || 0} bookings</p>
+                  <p className="text-xs text-gray-500 mt-1 flex items-center gap-1"><Layers className="h-3 w-3" /> {s.items?.length || 0} items · {s.slots?.length || 0} slots · {s.booking_count || 0} bookings</p>
                   <div className="flex gap-2 mt-3">
                     <button data-testid={`edit-service-${s.id}`} onClick={() => openEdit(s)} className="flex-1 rounded-full border border-gray-200 text-gray-700 hover:bg-gray-50 py-2 text-sm font-medium transition-colors">Edit</button>
                     <button data-testid={`delete-service-${s.id}`} onClick={() => remove(s.id)} className="rounded-full border border-gray-200 text-gray-500 hover:text-red-500 px-3 transition-colors"><Trash2 className="h-4 w-4" /></button>
@@ -129,7 +145,7 @@ export default function ProviderDashboard() {
             <div className="border border-gray-200 rounded-xl p-3">
               <p className="text-sm font-semibold text-gray-900 mb-2">Availability</p>
               <p className="text-xs text-gray-500 mb-1.5">Available days</p>
-              <div className="flex flex-wrap gap-2 mb-3">
+              <div className="flex flex-wrap gap-2">
                 {DAY_LABELS.map((lbl, idx) => {
                   const on = svcForm.available_days.includes(idx);
                   return (
@@ -137,14 +153,53 @@ export default function ProviderDashboard() {
                   );
                 })}
               </div>
-              <p className="text-xs text-gray-500 mb-1.5">Time slots</p>
-              <div className="grid grid-cols-4 gap-2">
-                {PRESET_SLOTS.map((s) => {
-                  const on = svcForm.slots.includes(s);
-                  return (
-                    <button type="button" key={s} data-testid={`slot-opt-${s}`} onClick={() => toggleSlot(s)} className={`py-2 rounded-lg text-xs font-medium border transition-colors ${on ? "bg-[#6D28D9] text-white border-[#6D28D9]" : "border-gray-200 text-gray-600 hover:bg-gray-50"}`}>{s}</button>
-                  );
-                })}
+            </div>
+
+            <div className="border border-gray-200 rounded-xl p-3">
+              <p className="text-sm font-semibold text-gray-900 mb-2">Time slots</p>
+
+              {/* Added slots list */}
+              <div className="space-y-2 mb-3">
+                {svcForm.slots.map((s, idx) => (
+                  <div key={`${s.time}-${s.mode}-${idx}`} data-testid={`slot-row-${s.mode}-${s.time}`} className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2 text-sm">
+                    <span className="flex items-center gap-2">
+                      {s.mode === "virtual" ? <Video className="h-4 w-4 text-sky-500" /> : <MapPin className="h-4 w-4 text-[#6D28D9]" />}
+                      <b className="text-gray-800">{s.time}</b>
+                      <span className="text-xs text-gray-500 capitalize">· {s.mode}</span>
+                      {s.mode === "physical" && <span className="text-xs text-gray-400 truncate max-w-[160px]">· {s.societies.map(socName).join(", ")}</span>}
+                    </span>
+                    <button type="button" data-testid={`remove-slot-${idx}`} onClick={() => removeSlot(idx)} className="text-gray-400 hover:text-red-500"><X className="h-4 w-4" /></button>
+                  </div>
+                ))}
+                {svcForm.slots.length === 0 && <p className="text-xs text-gray-400">No slots added yet.</p>}
+              </div>
+
+              {/* Slot builder */}
+              <div className="border border-dashed border-gray-200 rounded-lg p-3 space-y-2.5">
+                <div className="grid grid-cols-2 gap-2">
+                  <select data-testid="slot-time-select" className={inputCls} value={draft.time} onChange={(e) => setDraft({ ...draft, time: e.target.value })}>
+                    {PRESET_SLOTS.map((t) => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                  <div className="flex rounded-xl border border-gray-200 overflow-hidden">
+                    <button type="button" data-testid="slot-mode-physical" onClick={() => setDraft({ ...draft, mode: "physical" })} className={`flex-1 text-xs font-medium py-2 flex items-center justify-center gap-1 ${draft.mode === "physical" ? "bg-[#6D28D9] text-white" : "text-gray-600"}`}><MapPin className="h-3.5 w-3.5" /> Physical</button>
+                    <button type="button" data-testid="slot-mode-virtual" onClick={() => setDraft({ ...draft, mode: "virtual", societies: [] })} className={`flex-1 text-xs font-medium py-2 flex items-center justify-center gap-1 ${draft.mode === "virtual" ? "bg-[#6D28D9] text-white" : "text-gray-600"}`}><Video className="h-3.5 w-3.5" /> Virtual</button>
+                  </div>
+                </div>
+                {draft.mode === "physical" && (
+                  <div>
+                    <p className="text-xs text-gray-500 mb-1.5">Offered in societies</p>
+                    <div className="flex flex-wrap gap-2">
+                      {societies.map((soc) => {
+                        const on = draft.societies.includes(soc.id);
+                        return (
+                          <button type="button" key={soc.id} data-testid={`draft-society-${soc.id}`} onClick={() => toggleDraftSociety(soc.id)} className={`px-2.5 py-1.5 rounded-full text-xs font-medium border transition-colors ${on ? "bg-[#6D28D9] text-white border-[#6D28D9]" : "border-gray-200 text-gray-600 hover:bg-gray-50"}`}>{soc.name}</button>
+                        );
+                      })}
+                      {societies.length === 0 && <p className="text-xs text-gray-400">No societies available. Ask admin to add some.</p>}
+                    </div>
+                  </div>
+                )}
+                <button type="button" data-testid="add-slot-button" onClick={addSlot} className="w-full rounded-xl bg-[#6D28D9]/10 text-[#6D28D9] font-semibold text-sm py-2 flex items-center justify-center gap-1"><Plus className="h-4 w-4" /> Add slot</button>
               </div>
             </div>
 

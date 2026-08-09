@@ -23,6 +23,7 @@ import AdminOverview from "@/admin/Overview";
 import AdminProviders from "@/admin/Providers";
 import AdminServices from "@/admin/Services";
 import AdminCategories from "@/admin/Categories";
+import AdminSocieties from "@/admin/Societies";
 
 function AppRouter() {
   const location = useLocation();
@@ -51,6 +52,7 @@ function AppRouter() {
         <Route path="admin/providers" element={<AdminProviders />} />
         <Route path="admin/services" element={<AdminServices />} />
         <Route path="admin/categories" element={<AdminCategories />} />
+        <Route path="admin/societies" element={<AdminSocieties />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

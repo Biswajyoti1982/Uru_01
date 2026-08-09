@@ -78,6 +78,12 @@ class ServiceItem(BaseModel):
     duration_min: int = 60
 
 
+class SlotConfig(BaseModel):
+    time: str
+    mode: str = "physical"  # "physical" | "virtual"
+    societies: List[str] = []
+
+
 class ServiceCreate(BaseModel):
     title: str
     description: str = ""
@@ -86,7 +92,7 @@ class ServiceCreate(BaseModel):
     location: str = ""
     items: List[ServiceItem] = []
     available_days: List[int] = []
-    slots: List[str] = []
+    slots: List[SlotConfig] = []
 
 
 class ItemCreate(BaseModel):

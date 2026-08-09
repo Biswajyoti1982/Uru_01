@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { ArrowLeft, MapPin, CheckCircle2, CalendarClock } from "lucide-react";
+import { ArrowLeft, MapPin, CheckCircle2, CalendarClock, Video, Building2 } from "lucide-react";
 import api from "@/lib/api";
 import { useCart } from "@/context/CartContext";
 import { fmt, fmtDate } from "@/lib/format";
@@ -11,12 +11,14 @@ import { PLANS, planTotal } from "@/lib/plans";
 export default function Checkout() {
   const navigate = useNavigate();
   const { cart, total, count, clearCart } = useCart(); // total = per-month price
-  const [step, setStep] = useState(0); // 0 plan, 1 address, 2 schedule, 3 summary
+  const [step, setStep] = useState(0);
   const [planId, setPlanId] = useState("monthly");
   const [address, setAddress] = useState("");
   const [svcData, setSvcData] = useState(null);
+  const [societies, setSocieties] = useState([]);
   const [date, setDate] = useState("");
-  const [slot, setSlot] = useState("");
+  const [slotIdx, setSlotIdx] = useState(null);
+  const [societyId, setSocietyId] = useState("");
   const [placing, setPlacing] = useState(false);
   const placedRef = useRef(false);
 
@@ -26,10 +28,19 @@ export default function Checkout() {
   }, [cart, count, navigate]);
   useEffect(() => {
     if (cart?.serviceId) api.get(`/services/${cart.serviceId}`).then((r) => setSvcData(r.data));
+    api.get("/societies").then((r) => setSocieties(r.data));
   }, [cart?.serviceId]);
 
   const availDays = svcData?.available_days?.length ? svcData.available_days : [0, 1, 2, 3, 4, 5, 6];
-  const slots = svcData?.slots?.length ? svcData.slots : PRESET_SLOTS;
+  // Normalize slots to objects {time, mode, societies}
+  const slots = useMemo(() => {
+    if (svcData?.slots?.length) return svcData.slots;
+    return PRESET_SLOTS.map((t) => ({ time: t, mode: "virtual", societies: [] }));
+  }, [svcData]);
+
+  const selectedSlot = slotIdx != null ? slots[slotIdx] : null;
+  const isPhysical = selectedSlot?.mode === "physical";
+  const socName = (id) => societies.find((s) => s.id === id)?.name || id;
 
   const days = useMemo(() => {
     const out = [];
@@ -46,17 +57,37 @@ export default function Checkout() {
     if (days.length && !days.includes(date)) setDate(days[0]);
   }, [days, date]);
 
+  // Reset society when slot changes
+  useEffect(() => { setSocietyId(""); }, [slotIdx]);
+
+  // Dynamic step flow: virtual classes skip the address step
+  const stepList = useMemo(() => (isPhysical ? ["plan", "schedule", "address", "summary"] : ["plan", "schedule", "summary"]), [isPhysical]);
+  const current = stepList[Math.min(step, stepList.length - 1)];
+
   if (!cart) return null;
 
   const plan = PLANS.find((p) => p.id === planId) || PLANS[0];
   const planPrice = planTotal(total, plan);
   const savings = total * plan.months - planPrice;
 
+  const physicalSocieties = selectedSlot ? (selectedSlot.societies || []) : [];
+
+  const scheduleValid = selectedSlot && (!isPhysical || !!societyId);
+
   const confirm = async () => {
     setPlacing(true);
     try {
       const items = Object.values(cart.lines).map((l) => ({ item_id: l.item.id, qty: l.qty }));
-      await api.post("/bookings", { service_id: cart.serviceId, items, date, time_slot: slot, address, plan: planId });
+      await api.post("/bookings", {
+        service_id: cart.serviceId,
+        items,
+        date,
+        time_slot: selectedSlot.time,
+        mode: selectedSlot.mode,
+        society_id: isPhysical ? societyId : "",
+        address: isPhysical ? address : "Online class",
+        plan: planId,
+      });
       placedRef.current = true;
       clearCart();
       toast.success("Subscription activated!");
@@ -68,8 +99,10 @@ export default function Checkout() {
     }
   };
 
-  const titles = ["Choose a plan", "Your address", "Weekly schedule", "Review & confirm"];
+  const titleMap = { plan: "Choose a plan", schedule: "Weekly schedule", address: "Your address", summary: "Review & confirm" };
   const btn = "w-full h-12 rounded-full bg-[#6D28D9] text-white font-semibold disabled:opacity-40 active:scale-95 transition-transform";
+
+  const goNext = () => setStep((s) => Math.min(s + 1, stepList.length - 1));
 
   return (
     <div className="pb-28 min-h-screen bg-gray-50">
@@ -77,28 +110,23 @@ export default function Checkout() {
         <button data-testid="checkout-back" onClick={() => (step === 0 ? navigate(-1) : setStep(step - 1))} className="active:scale-90 transition-transform">
           <ArrowLeft className="h-5 w-5 text-gray-700" />
         </button>
-        <h1 className="font-display text-lg font-bold text-gray-900">{titles[step]}</h1>
+        <h1 className="font-display text-lg font-bold text-gray-900">{titleMap[current]}</h1>
         <div className="ml-auto flex gap-1.5">
-          {[0, 1, 2, 3].map((i) => (
+          {stepList.map((_, i) => (
             <div key={i} className={`h-1.5 rounded-full transition-all ${i === step ? "w-6 bg-[#6D28D9]" : "w-1.5 bg-gray-200"}`} />
           ))}
         </div>
       </div>
 
-      {/* Step 0: plan */}
-      {step === 0 && (
+      {/* Plan */}
+      {current === "plan" && (
         <div className="px-5 mt-5 space-y-3">
           <p className="text-sm text-gray-500">Billed at <b className="text-gray-800">{fmt(total)}/month</b>. Commit longer and save.</p>
           {PLANS.map((p) => {
             const price = planTotal(total, p);
             const on = planId === p.id;
             return (
-              <button
-                key={p.id}
-                data-testid={`plan-${p.id}`}
-                onClick={() => setPlanId(p.id)}
-                className={`w-full text-left rounded-2xl border p-4 flex items-center justify-between transition-colors ${on ? "border-[#6D28D9] bg-[#6D28D9]/5 ring-1 ring-[#6D28D9]" : "border-gray-200 bg-white"}`}
-              >
+              <button key={p.id} data-testid={`plan-${p.id}`} onClick={() => setPlanId(p.id)} className={`w-full text-left rounded-2xl border p-4 flex items-center justify-between transition-colors ${on ? "border-[#6D28D9] bg-[#6D28D9]/5 ring-1 ring-[#6D28D9]" : "border-gray-200 bg-white"}`}>
                 <div>
                   <div className="flex items-center gap-2">
                     <p className="font-semibold text-gray-900">{p.label}</p>
@@ -116,25 +144,8 @@ export default function Checkout() {
         </div>
       )}
 
-      {/* Step 1: address */}
-      {step === 1 && (
-        <div className="px-5 mt-5">
-          <div className="bg-white rounded-2xl border border-gray-100 p-4">
-            <label className="text-xs font-medium text-gray-500 flex items-center gap-1 mb-2"><MapPin className="h-3.5 w-3.5" /> Service address</label>
-            <textarea
-              data-testid="checkout-address-input"
-              value={address}
-              onChange={(e) => setAddress(e.target.value)}
-              rows={4}
-              placeholder="Flat / House no, Street, Area, City"
-              className="w-full text-sm text-gray-800 placeholder:text-gray-400 outline-none resize-none border border-gray-200 rounded-xl p-3 focus:border-[#6D28D9]"
-            />
-          </div>
-        </div>
-      )}
-
-      {/* Step 2: schedule */}
-      {step === 2 && (
+      {/* Schedule */}
+      {current === "schedule" && (
         <div className="px-5 mt-5">
           <p className="text-sm text-gray-500 mb-3 flex items-center gap-1"><CalendarClock className="h-4 w-4" /> Choose your start date & weekly time slot</p>
           <p className="text-sm font-semibold text-gray-900 mb-2">Start date</p>
@@ -150,20 +161,63 @@ export default function Checkout() {
               );
             })}
           </div>
+
           <p className="text-sm font-semibold text-gray-900 mt-5 mb-2">Weekly time slot</p>
-          <div className="grid grid-cols-3 gap-3">
-            {slots.map((s) => {
-              const on = s === slot;
+          <div className="grid grid-cols-2 gap-3">
+            {slots.map((s, i) => {
+              const on = i === slotIdx;
+              const Icon = s.mode === "virtual" ? Video : MapPin;
               return (
-                <button key={s} data-testid={`slot-${s}`} onClick={() => setSlot(s)} className={`py-3 rounded-xl border text-sm font-medium ${on ? "bg-[#6D28D9] text-white border-[#6D28D9]" : "bg-white text-gray-700 border-gray-200"}`}>{s}</button>
+                <button key={`${s.time}-${s.mode}-${i}`} data-testid={`slot-${s.mode}-${s.time}`} onClick={() => setSlotIdx(i)} className={`py-3 px-3 rounded-xl border text-sm font-medium flex items-center justify-center gap-1.5 ${on ? "bg-[#6D28D9] text-white border-[#6D28D9]" : "bg-white text-gray-700 border-gray-200"}`}>
+                  <Icon className="h-4 w-4" /> {s.time}
+                  <span className={`text-[10px] capitalize ${on ? "text-white/80" : "text-gray-400"}`}>{s.mode}</span>
+                </button>
               );
             })}
+          </div>
+
+          {isPhysical && (
+            <div className="mt-5">
+              <p className="text-sm font-semibold text-gray-900 mb-2 flex items-center gap-1"><Building2 className="h-4 w-4" /> Select your society</p>
+              {physicalSocieties.length === 0 ? (
+                <p className="text-xs text-red-500">This slot has no societies configured. Please pick another slot.</p>
+              ) : (
+                <div className="space-y-2">
+                  {physicalSocieties.map((id) => {
+                    const on = societyId === id;
+                    return (
+                      <button key={id} data-testid={`society-${id}`} onClick={() => setSocietyId(id)} className={`w-full text-left rounded-xl border p-3 flex items-center justify-between transition-colors ${on ? "border-[#6D28D9] bg-[#6D28D9]/5 ring-1 ring-[#6D28D9]" : "border-gray-200 bg-white"}`}>
+                        <span className="text-sm font-medium text-gray-900">{socName(id)}</span>
+                        <div className={`h-4 w-4 rounded-full border-2 ${on ? "border-[#6D28D9] bg-[#6D28D9]" : "border-gray-300"}`} />
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {selectedSlot && !isPhysical && (
+            <div className="mt-5 flex items-center gap-2 text-xs text-sky-600 bg-sky-50 rounded-xl px-3 py-2.5">
+              <Video className="h-4 w-4" /> This is an online class — you'll receive a joining link. No address needed.
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Address (physical only) */}
+      {current === "address" && (
+        <div className="px-5 mt-5">
+          <div className="bg-white rounded-2xl border border-gray-100 p-4">
+            <div className="flex items-center gap-2 mb-3 text-sm text-gray-700"><Building2 className="h-4 w-4 text-[#6D28D9]" /> Society: <b>{socName(societyId)}</b></div>
+            <label className="text-xs font-medium text-gray-500 flex items-center gap-1 mb-2"><MapPin className="h-3.5 w-3.5" /> Flat / house details</label>
+            <textarea data-testid="checkout-address-input" value={address} onChange={(e) => setAddress(e.target.value)} rows={4} placeholder="Flat / House no, Block, Landmark" className="w-full text-sm text-gray-800 placeholder:text-gray-400 outline-none resize-none border border-gray-200 rounded-xl p-3 focus:border-[#6D28D9]" />
           </div>
         </div>
       )}
 
-      {/* Step 3: summary */}
-      {step === 3 && (
+      {/* Summary */}
+      {current === "summary" && (
         <div className="px-5 mt-5 space-y-4">
           <div className="bg-white rounded-2xl border border-gray-100 p-4 flex items-center gap-3">
             <img src={cart.service.image_url} alt="" className="h-12 w-12 rounded-xl object-cover" />
@@ -188,8 +242,16 @@ export default function Checkout() {
           </div>
           <div className="bg-white rounded-2xl border border-gray-100 p-4 text-sm">
             <div className="flex justify-between py-1"><span className="text-gray-500">Plan</span><span className="font-medium text-gray-900">{plan.label}</span></div>
-            <div className="flex justify-between py-1"><span className="text-gray-500">Starts</span><span className="font-medium text-gray-900">{fmtDate(date)} · {slot}</span></div>
-            <div className="flex justify-between py-1"><span className="text-gray-500">Address</span><span className="font-medium text-gray-900 text-right max-w-[60%]">{address}</span></div>
+            <div className="flex justify-between py-1"><span className="text-gray-500">Mode</span><span className="font-medium text-gray-900 capitalize flex items-center gap-1">{isPhysical ? <MapPin className="h-3.5 w-3.5" /> : <Video className="h-3.5 w-3.5" />}{selectedSlot?.mode}</span></div>
+            <div className="flex justify-between py-1"><span className="text-gray-500">Starts</span><span className="font-medium text-gray-900">{fmtDate(date)} · {selectedSlot?.time}</span></div>
+            {isPhysical ? (
+              <>
+                <div className="flex justify-between py-1"><span className="text-gray-500">Society</span><span className="font-medium text-gray-900">{socName(societyId)}</span></div>
+                <div className="flex justify-between py-1"><span className="text-gray-500">Address</span><span className="font-medium text-gray-900 text-right max-w-[60%]">{address || "—"}</span></div>
+              </>
+            ) : (
+              <div className="flex justify-between py-1"><span className="text-gray-500">Access</span><span className="font-medium text-gray-900">Online joining link</span></div>
+            )}
           </div>
           <div className="flex items-center gap-2 text-xs text-emerald-600 bg-emerald-50 rounded-xl px-3 py-2">
             <CheckCircle2 className="h-4 w-4" /> Free to activate — pay the provider directly for your subscription.
@@ -199,10 +261,10 @@ export default function Checkout() {
 
       {/* Sticky CTA */}
       <div className="absolute bottom-0 left-0 w-full bg-white border-t border-gray-200 px-4 py-3 z-40 max-w-md mx-auto">
-        {step === 0 && <button data-testid="plan-continue" onClick={() => setStep(1)} className={btn}>Continue · {fmt(planPrice)}</button>}
-        {step === 1 && <button data-testid="address-continue" disabled={!address.trim()} onClick={() => setStep(2)} className={btn}>Continue</button>}
-        {step === 2 && <button data-testid="slot-continue" disabled={!slot} onClick={() => setStep(3)} className={btn}>Continue</button>}
-        {step === 3 && (
+        {current === "plan" && <button data-testid="plan-continue" onClick={goNext} className={btn}>Continue · {fmt(planPrice)}</button>}
+        {current === "schedule" && <button data-testid="slot-continue" disabled={!scheduleValid} onClick={goNext} className={btn}>Continue</button>}
+        {current === "address" && <button data-testid="address-continue" disabled={!address.trim()} onClick={goNext} className={btn}>Continue</button>}
+        {current === "summary" && (
           <button data-testid="confirm-booking-button" disabled={placing} onClick={confirm} className={btn + " flex items-center justify-center gap-2"}>
             {placing ? "Activating…" : `Confirm subscription · ${fmt(planPrice)}`}
           </button>
