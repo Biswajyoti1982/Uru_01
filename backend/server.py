@@ -349,7 +349,10 @@ async def list_services(category: Optional[str] = None):
     query = {"status": "approved", "is_visible": True}
     if category:
         query["category"] = category
-    services = await db.services.find(query, {"_id": 0}).sort("created_at", -1).to_list(500)
+    services = await db.services.find(query, {"_id": 0}).to_list(500)
+    for svc in services:
+        svc["booking_count"] = await db.bookings.count_documents({"service_id": svc["id"], "status": {"$in": ["active", "confirmed"]}})
+    services.sort(key=lambda s: (s["booking_count"], s.get("created_at", "")), reverse=True)
     return services
 
 

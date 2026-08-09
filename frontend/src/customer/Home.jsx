@@ -78,6 +78,11 @@ export default function Home() {
           <h2 className="font-display text-lg font-bold text-gray-900">
             {active ? `Popular ${catMeta(active).label} classes` : "Popular classes"}
           </h2>
+          {svcFiltered.length > 0 && (
+            <button data-testid="see-all-classes" onClick={() => navigate(`/app/classes${active ? `?category=${active}` : ""}`)} className="text-xs font-semibold text-[#6D28D9] flex items-center">
+              See all <ChevronRight className="h-4 w-4" />
+            </button>
+          )}
         </div>
         {svcFiltered.length === 0 ? (
           <p className="text-sm text-gray-400 px-5 py-4">No classes found.</p>

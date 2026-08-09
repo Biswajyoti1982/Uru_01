@@ -13,6 +13,7 @@ import ManageLayout from "@/components/ManageLayout";
 import Home from "@/customer/Home";
 import ServicePage from "@/customer/ServicePage";
 import ProviderPage from "@/customer/ProviderPage";
+import Classes from "@/customer/Classes";
 import Cart from "@/customer/Cart";
 import Checkout from "@/customer/Checkout";
 import Bookings from "@/customer/Bookings";
@@ -40,6 +41,7 @@ function AppRouter() {
         <Route index element={<Home />} />
         <Route path="service/:id" element={<ServicePage />} />
         <Route path="provider/:id" element={<ProviderPage />} />
+        <Route path="classes" element={<Classes />} />
         <Route path="cart" element={<Cart />} />
         <Route path="checkout" element={<Checkout />} />
         <Route path="bookings" element={<Bookings />} />
