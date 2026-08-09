@@ -4,6 +4,7 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-route
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider } from "@/context/AuthContext";
 import { CartProvider } from "@/context/CartContext";
+import { CategoriesProvider } from "@/context/CategoriesContext";
 import AuthCallback from "@/components/AuthCallback";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import Landing from "@/components/URULanding";
@@ -21,6 +22,7 @@ import ProviderBookings from "@/provider/ProviderBookings";
 import AdminOverview from "@/admin/Overview";
 import AdminProviders from "@/admin/Providers";
 import AdminServices from "@/admin/Services";
+import AdminCategories from "@/admin/Categories";
 
 function AppRouter() {
   const location = useLocation();
@@ -48,6 +50,7 @@ function AppRouter() {
         <Route path="admin" element={<AdminOverview />} />
         <Route path="admin/providers" element={<AdminProviders />} />
         <Route path="admin/services" element={<AdminServices />} />
+        <Route path="admin/categories" element={<AdminCategories />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />
@@ -60,10 +63,12 @@ function App() {
     <div className="App">
       <BrowserRouter>
         <AuthProvider>
-          <CartProvider>
-            <AppRouter />
-            <Toaster position="top-center" />
-          </CartProvider>
+          <CategoriesProvider>
+            <CartProvider>
+              <AppRouter />
+              <Toaster position="top-center" />
+            </CartProvider>
+          </CategoriesProvider>
         </AuthProvider>
       </BrowserRouter>
     </div>

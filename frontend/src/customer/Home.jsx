@@ -3,16 +3,16 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Search, MapPin, Star, ChevronRight } from "lucide-react";
 import api from "@/lib/api";
-import { CATEGORIES, catMeta } from "@/lib/catmeta";
+import { useCategories } from "@/context/CategoriesContext";
 import { fmt } from "@/lib/format";
 import { useAuth } from "@/context/AuthContext";
-
 export default function Home() {
   const [services, setServices] = useState([]);
   const [active, setActive] = useState("");
   const [q, setQ] = useState("");
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { categories, catMeta } = useCategories();
 
   useEffect(() => {
     api.get("/services", { params: active ? { category: active } : {} }).then((r) => setServices(r.data));
@@ -47,7 +47,7 @@ export default function Home() {
             data-testid="home-search-input"
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Search salon, karate, drawing…"
+            placeholder="Search gym, karate, cricket…"
             className="flex-1 text-sm text-gray-800 placeholder:text-gray-400 outline-none bg-transparent"
           />
         </div>
@@ -62,7 +62,7 @@ export default function Home() {
           )}
         </div>
         <div className="grid grid-cols-4 gap-3">
-          {CATEGORIES.map((c) => {
+          {categories.map((c) => {
             const on = active === c.id;
             return (
               <button

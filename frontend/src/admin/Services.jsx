@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { toast } from "sonner";
 import api from "@/lib/api";
-import { catMeta } from "@/lib/catmeta";
+import { useCategories } from "@/context/CategoriesContext";
 import { ShieldCheck, Check, X, Eye, EyeOff } from "lucide-react";
 
 const Badge = ({ status }) => {
@@ -10,6 +10,7 @@ const Badge = ({ status }) => {
 };
 
 export default function AdminServices() {
+  const { catMeta } = useCategories();
   const [items, setItems] = useState([]);
   const [filter, setFilter] = useState("");
   const [loading, setLoading] = useState(true);

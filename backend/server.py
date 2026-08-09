@@ -4,6 +4,7 @@ from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
+import re
 import uuid
 from pathlib import Path
 from pydantic import BaseModel, Field
@@ -24,17 +25,15 @@ api_router = APIRouter(prefix="/api")
 ADMIN_EMAIL = "rrlfnlstrategy@gmail.com"
 EMERGENT_SESSION_URL = "https://demobackend.emergentagent.com/auth/v1/env/oauth/session-data"
 
-CATEGORIES = [
-    {"id": "salon", "label": "Salon & Spa", "icon": "scissors"},
-    {"id": "fitness", "label": "Fitness & Gym", "icon": "dumbbell"},
-    {"id": "art", "label": "Drawing & Art", "icon": "palette"},
-    {"id": "karate", "label": "Martial Arts", "icon": "swords"},
-    {"id": "skating", "label": "Skating", "icon": "footprints"},
-    {"id": "dance", "label": "Dance", "icon": "music"},
-    {"id": "music", "label": "Music", "icon": "guitar"},
-    {"id": "yoga", "label": "Yoga", "icon": "heart-pulse"},
-    {"id": "swimming", "label": "Swimming", "icon": "waves"},
-    {"id": "tutoring", "label": "Tutoring", "icon": "graduation-cap"},
+DEFAULT_CATEGORIES = [
+    {"id": "gym", "label": "Gym Training", "icon": "dumbbell", "color": "#F97316"},
+    {"id": "martial", "label": "Martial Arts", "icon": "swords", "color": "#EF4444"},
+    {"id": "cricket", "label": "Cricket", "icon": "target", "color": "#10B981"},
+    {"id": "football", "label": "Football", "icon": "goal", "color": "#3B82F6"},
+    {"id": "skating", "label": "Skating", "icon": "footprints", "color": "#06B6D4"},
+    {"id": "art", "label": "Art & Craft", "icon": "palette", "color": "#8B5CF6"},
+    {"id": "music", "label": "Musical Instruments", "icon": "guitar", "color": "#0EA5E9"},
+    {"id": "tuition", "label": "Tuition for Kids", "icon": "graduation-cap", "color": "#6366F1"},
 ]
 
 TIME_SLOTS = ["09:00", "10:00", "11:00", "12:00", "14:00", "15:00", "16:00", "17:00", "18:00", "19:00"]
@@ -85,6 +84,12 @@ class BookingCreate(BaseModel):
     notes: str = ""
 
 
+class CategoryCreate(BaseModel):
+    label: str
+    icon: str = "sparkles"
+    color: str = "#6D28D9"
+
+
 # ---------------- Auth helpers ----------------
 async def get_current_user(request: Request, authorization: Optional[str] = Header(None)):
     token = request.cookies.get("session_token")
@@ -130,7 +135,8 @@ async def root():
 
 @api_router.get("/categories")
 async def get_categories():
-    return CATEGORIES
+    cats = await db.categories.find({}, {"_id": 0}).sort("order", 1).to_list(200)
+    return cats
 
 
 @api_router.post("/auth/session")
@@ -245,7 +251,7 @@ def _mk_items(items):
 
 @api_router.post("/provider/services")
 async def create_service(body: ServiceCreate, user=Depends(require_provider)):
-    if body.category not in [c["id"] for c in CATEGORIES]:
+    if not await db.categories.find_one({"id": body.category}):
         raise HTTPException(status_code=400, detail="Invalid category")
     service_id = f"svc_{uuid.uuid4().hex[:12]}"
     doc = {
@@ -443,6 +449,26 @@ async def toggle_visibility(service_id: str, user=Depends(require_admin)):
     return {"ok": True}
 
 
+@api_router.get("/admin/categories")
+async def admin_categories(user=Depends(require_admin)):
+    cats = await db.categories.find({}, {"_id": 0}).sort("order", 1).to_list(200)
+    return cats
+
+
+@api_router.post("/admin/categories")
+async def create_category(body: CategoryCreate, user=Depends(require_admin)):
+    slug = re.sub(r"[^a-z0-9]+", "-", body.label.lower()).strip("-")
+    if not slug:
+        raise HTTPException(status_code=400, detail="Invalid name")
+    if await db.categories.find_one({"id": slug}):
+        raise HTTPException(status_code=400, detail="Category already exists")
+    count = await db.categories.count_documents({})
+    doc = {"id": slug, "label": body.label, "icon": body.icon, "color": body.color,
+           "order": count, "created_at": datetime.now(timezone.utc).isoformat()}
+    await db.categories.insert_one(doc)
+    return await db.categories.find_one({"id": slug}, {"_id": 0})
+
+
 # ---------------- Seed demo data ----------------
 async def seed_data():
     if await db.services.count_documents({}) > 0:
@@ -452,40 +478,56 @@ async def seed_data():
         return {"id": f"item_{uuid.uuid4().hex[:10]}", "name": name, "price": price, "duration_min": dur}
 
     providers = [
-        {"user_id": "user_demoprov_salon", "email": "glam@uru.app", "name": "Priya Kapoor", "business_name": "Glam Studio", "bio": "Premium salon & spa at your doorstep.", "phone": "+91 90000 10001"},
-        {"user_id": "user_demoprov_art", "email": "art@uru.app", "name": "Rahul Mehta", "business_name": "Little Picasso Art", "bio": "Drawing, painting & sketching classes for all ages.", "phone": "+91 90000 10002"},
-        {"user_id": "user_demoprov_dojo", "email": "dojo@uru.app", "name": "Kenji Sato", "business_name": "Dragon Dojo", "bio": "Traditional karate, self-defense & skating coaching.", "phone": "+91 90000 10003"},
+        {"user_id": "user_demoprov_fit", "email": "fit@uru.app", "name": "Arjun Rao", "business_name": "FitZone Academy", "bio": "Strength training and sports coaching for all ages.", "phone": "+91 90000 10001"},
+        {"user_id": "user_demoprov_dojo", "email": "dojo@uru.app", "name": "Kenji Sato", "business_name": "Dragon Dojo", "bio": "Traditional martial arts and skating coaching.", "phone": "+91 90000 10002"},
+        {"user_id": "user_demoprov_arts", "email": "arts@uru.app", "name": "Meera Nair", "business_name": "Creative Minds Studio", "bio": "Art, craft and musical instrument classes.", "phone": "+91 90000 10003"},
+        {"user_id": "user_demoprov_edu", "email": "edu@uru.app", "name": "Sunita Verma", "business_name": "Bright Scholars", "bio": "After-school tuition for kids across subjects.", "phone": "+91 90000 10004"},
     ]
     for p in providers:
         if not await db.users.find_one({"user_id": p["user_id"]}):
             await db.users.insert_one({**p, "picture": "", "role": "provider", "provider_status": "approved", "created_at": datetime.now(timezone.utc).isoformat()})
 
     samples = [
-        {"provider": "user_demoprov_salon", "provider_name": "Glam Studio", "title": "Salon Classic at Home", "category": "salon",
-         "description": "Salon-grade grooming and beauty services in the comfort of your home.",
-         "image_url": "https://images.unsplash.com/photo-1634449571010-02389ed0f9b0?crop=entropy&cs=srgb&fm=jpg&q=85&w=1200",
-         "location": "Bandra, Mumbai",
-         "items": [item("Haircut & Styling", 499, 45), item("Facial Glow", 899, 60), item("Manicure & Pedicure", 799, 75), item("Head Massage", 399, 30)]},
-        {"provider": "user_demoprov_salon", "provider_name": "Glam Studio", "title": "Bridal Makeup Package", "category": "salon",
-         "description": "Complete bridal makeup with trial session by expert artists.",
-         "image_url": "https://images.unsplash.com/photo-1610047614301-13c63f00c032?crop=entropy&cs=srgb&fm=jpg&q=85&w=1200",
-         "location": "Bandra, Mumbai",
-         "items": [item("Party Makeup", 1499, 60), item("Bridal Makeup", 4999, 120)]},
-        {"provider": "user_demoprov_art", "provider_name": "Little Picasso Art", "title": "Drawing & Painting Classes", "category": "art",
-         "description": "Learn sketching, watercolor and acrylic painting from professional artists.",
-         "image_url": "https://images.unsplash.com/photo-1541753866388-0b3c701627d3?crop=entropy&cs=srgb&fm=jpg&q=85&w=1200",
-         "location": "Koramangala, Bengaluru",
-         "items": [item("Beginner Sketching", 349, 60), item("Watercolor Basics", 449, 90), item("Acrylic Masterclass", 699, 120)]},
-        {"provider": "user_demoprov_dojo", "provider_name": "Dragon Dojo", "title": "Karate & Self-Defense", "category": "karate",
+        {"provider": "user_demoprov_fit", "provider_name": "FitZone Academy", "title": "Strength & Conditioning Gym", "category": "gym",
+         "description": "Personal and group gym training to build strength, stamina and mobility.",
+         "image_url": "https://images.unsplash.com/photo-1576678927484-cc907957088c?crop=entropy&cs=srgb&fm=jpg&q=85&w=1200",
+         "location": "Andheri, Mumbai",
+         "items": [item("Personal Training", 699, 60), item("Group HIIT", 349, 45), item("Strength Program", 549, 60)]},
+        {"provider": "user_demoprov_dojo", "provider_name": "Dragon Dojo", "title": "Karate & Self-Defense", "category": "martial",
          "description": "Build discipline, fitness and confidence with certified black-belt instructors.",
          "image_url": "https://images.unsplash.com/photo-1555597408-26bc8e548a46?crop=entropy&cs=srgb&fm=jpg&q=85&w=1200",
          "location": "Andheri, Mumbai",
          "items": [item("Kids Karate (Beginner)", 399, 60), item("Adult Self-Defense", 499, 60), item("Private 1:1 Session", 999, 60)]},
+        {"provider": "user_demoprov_fit", "provider_name": "FitZone Academy", "title": "Cricket Coaching Academy", "category": "cricket",
+         "description": "Batting, bowling and fielding coaching by former state-level players.",
+         "image_url": "https://images.unsplash.com/photo-1593341646782-e0b495cff86d?crop=entropy&cs=srgb&fm=jpg&q=85&w=1200",
+         "location": "Wankhede, Mumbai",
+         "items": [item("Beginner Batch", 499, 90), item("Advanced Net Session", 799, 90)]},
+        {"provider": "user_demoprov_fit", "provider_name": "FitZone Academy", "title": "Football Training Club", "category": "football",
+         "description": "Youth football coaching focused on skills, drills and match play.",
+         "image_url": "https://images.unsplash.com/photo-1551958219-acbc608c6377?crop=entropy&cs=srgb&fm=jpg&q=85&w=1200",
+         "location": "Powai, Mumbai",
+         "items": [item("Junior Coaching (U12)", 449, 90), item("Teen Coaching (U16)", 549, 90)]},
         {"provider": "user_demoprov_dojo", "provider_name": "Dragon Dojo", "title": "Roller Skating Academy", "category": "skating",
          "description": "Fun and safe roller skating coaching for kids and beginners.",
          "image_url": "https://images.unsplash.com/photo-1622640338505-2ad7465bda17?crop=entropy&cs=srgb&fm=jpg&q=85&w=1200",
          "location": "Andheri, Mumbai",
          "items": [item("Roller Skating Basics", 349, 60), item("Advanced Skating", 549, 75)]},
+        {"provider": "user_demoprov_arts", "provider_name": "Creative Minds Studio", "title": "Art & Craft Studio", "category": "art",
+         "description": "Drawing, painting and hands-on craft workshops for all ages.",
+         "image_url": "https://images.unsplash.com/photo-1605627079912-97c3810a11a4?crop=entropy&cs=srgb&fm=jpg&q=85&w=1200",
+         "location": "Koramangala, Bengaluru",
+         "items": [item("Kids Craft Workshop", 349, 60), item("Sketching Basics", 399, 90), item("Acrylic Painting", 599, 120)]},
+        {"provider": "user_demoprov_arts", "provider_name": "Creative Minds Studio", "title": "Guitar & Keyboard Lessons", "category": "music",
+         "description": "Learn guitar, keyboard and music theory with experienced tutors.",
+         "image_url": "https://images.unsplash.com/photo-1510915361894-db8b60106cb1?crop=entropy&cs=srgb&fm=jpg&q=85&w=1200",
+         "location": "Indiranagar, Bengaluru",
+         "items": [item("Beginner Guitar", 499, 45), item("Keyboard Basics", 499, 45)]},
+        {"provider": "user_demoprov_edu", "provider_name": "Bright Scholars", "title": "Kids Tuition Classes", "category": "tuition",
+         "description": "After-school tuition for Maths, Science and English (Grades 1-8).",
+         "image_url": "https://images.unsplash.com/photo-1583468982228-19f19164aee2?crop=entropy&cs=srgb&fm=jpg&q=85&w=1200",
+         "location": "Powai, Mumbai",
+         "items": [item("Maths Tuition", 399, 60), item("Science Tuition", 399, 60), item("English Tuition", 349, 60)]},
     ]
     for s in samples:
         await db.services.insert_one({
@@ -505,8 +547,18 @@ async def seed_data():
     logger.info("Seed data created")
 
 
+async def seed_categories():
+    for i, c in enumerate(DEFAULT_CATEGORIES):
+        await db.categories.update_one(
+            {"id": c["id"]},
+            {"$setOnInsert": {**c, "order": i, "created_at": datetime.now(timezone.utc).isoformat()}},
+            upsert=True,
+        )
+
+
 @app.on_event("startup")
 async def on_startup():
+    await seed_categories()
     await seed_data()
 
 

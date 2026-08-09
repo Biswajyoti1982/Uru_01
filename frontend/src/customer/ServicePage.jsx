@@ -11,6 +11,7 @@ export default function ServicePage() {
   const navigate = useNavigate();
   const [svc, setSvc] = useState(null);
   const { cart, addItem, decItem } = useCart();
+  const { catMeta } = useCategories();
 
   useEffect(() => {
     api.get(`/services/${id}`).then((r) => setSvc(r.data));

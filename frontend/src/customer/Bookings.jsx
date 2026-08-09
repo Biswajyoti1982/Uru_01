@@ -3,13 +3,14 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { CalendarCheck, MapPin, Clock, X } from "lucide-react";
 import api from "@/lib/api";
-import { catMeta } from "@/lib/catmeta";
+import { useCategories } from "@/context/CategoriesContext";
 import { fmt, fmtDate } from "@/lib/format";
 
 export default function Bookings() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const { catMeta } = useCategories();
 
   const load = async () => {
     setLoading(true);

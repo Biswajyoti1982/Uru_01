@@ -1,12 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { toast } from "sonner";
 import api from "@/lib/api";
-import { CATEGORIES, catMeta } from "@/lib/catmeta";
-import { fmt } from "@/lib/format";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useCategories } from "@/context/CategoriesContext";
+import { fmt } from "@/lib/format";import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Store, Plus, Trash2, Layers, X } from "lucide-react";
 
-const emptyService = { title: "", description: "", category: "salon", image_url: "", location: "" };
+const emptyService = { title: "", description: "", category: "gym", image_url: "", location: "" };
 const emptyItem = { name: "", price: "", duration_min: 60 };
 
 const Badge = ({ status }) => {
@@ -15,6 +14,7 @@ const Badge = ({ status }) => {
 };
 
 export default function ProviderDashboard() {
+  const { categories, catMeta } = useCategories();
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [svcOpen, setSvcOpen] = useState(false);
