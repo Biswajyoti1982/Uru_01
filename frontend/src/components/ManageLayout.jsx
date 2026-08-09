@@ -1,7 +1,7 @@
 import React from "react";
 import { Outlet, NavLink, useNavigate, Navigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
-import { Sparkles, Store, ClipboardList, LayoutDashboard, Users, ShieldCheck, ArrowLeft, LayoutGrid, Building2 } from "lucide-react";
+import { Sparkles, Store, ClipboardList, LayoutDashboard, Users, ShieldCheck, ArrowLeft, LayoutGrid, Building2, UserCog } from "lucide-react";
 
 const Item = ({ to, icon: Icon, label, testid, end }) => (
   <NavLink
@@ -41,6 +41,7 @@ export default function ManageLayout() {
             <>
               <p className="px-4 pt-2 pb-1 text-[10px] uppercase tracking-widest text-gray-400 font-semibold">Provider</p>
               <Item to="/manage/provider/services" icon={Store} label="My Services" testid="nav-provider-services" />
+              <Item to="/manage/provider/profile" icon={UserCog} label="My Profile" testid="nav-provider-profile" />
               <Item to="/manage/provider/bookings" icon={ClipboardList} label="Bookings" testid="nav-provider-bookings" />
             </>
           )}

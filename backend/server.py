@@ -70,6 +70,22 @@ class ProviderApply(BaseModel):
     business_name: str
     bio: str = ""
     phone: str = ""
+    experience_years: int = 0
+    certifications: List[str] = []
+    specialties: List[str] = []
+    languages: List[str] = []
+    avatar_url: str = ""
+
+
+class ProviderProfileUpdate(BaseModel):
+    business_name: str
+    bio: str = ""
+    phone: str = ""
+    experience_years: int = 0
+    certifications: List[str] = []
+    specialties: List[str] = []
+    languages: List[str] = []
+    avatar_url: str = ""
 
 
 class ServiceItem(BaseModel):
@@ -250,8 +266,82 @@ async def provider_apply(body: ProviderApply, user=Depends(get_current_user)):
         "business_name": body.business_name,
         "bio": body.bio,
         "phone": body.phone,
+        "experience_years": body.experience_years,
+        "certifications": body.certifications,
+        "specialties": body.specialties,
+        "languages": body.languages,
+        "avatar_url": body.avatar_url,
     }})
     return await db.users.find_one({"user_id": user["user_id"]}, {"_id": 0})
+
+
+@api_router.put("/provider/profile")
+async def update_provider_profile(body: ProviderProfileUpdate, user=Depends(require_provider)):
+    await db.users.update_one({"user_id": user["user_id"]}, {"$set": {
+        "business_name": body.business_name,
+        "bio": body.bio,
+        "phone": body.phone,
+        "experience_years": body.experience_years,
+        "certifications": body.certifications,
+        "specialties": body.specialties,
+        "languages": body.languages,
+        "avatar_url": body.avatar_url,
+    }})
+    return await db.users.find_one({"user_id": user["user_id"]}, {"_id": 0})
+
+
+def _provider_summary(u, svcs):
+    prices = [it["price"] for s in svcs for it in s.get("items", [])]
+    cats = sorted({s["category"] for s in svcs})
+    return {
+        "user_id": u["user_id"],
+        "business_name": u.get("business_name") or u.get("name", ""),
+        "bio": u.get("bio", ""),
+        "avatar_url": u.get("avatar_url") or u.get("picture", ""),
+        "experience_years": u.get("experience_years", 0),
+        "certifications": u.get("certifications", []),
+        "specialties": u.get("specialties", []),
+        "languages": u.get("languages", []),
+        "rating": u.get("rating", 4.7),
+        "price_from": min(prices) if prices else 0,
+        "categories": cats,
+        "service_count": len(svcs),
+    }
+
+
+@api_router.get("/providers")
+async def list_providers(category: Optional[str] = None):
+    query = {"status": "approved", "is_visible": True}
+    if category:
+        query["category"] = category
+    services = await db.services.find(query, {"_id": 0}).to_list(2000)
+    by_provider = {}
+    for s in services:
+        by_provider.setdefault(s["provider_id"], []).append(s)
+    result = []
+    for pid, svcs in by_provider.items():
+        u = await db.users.find_one({"user_id": pid}, {"_id": 0})
+        if not u:
+            continue
+        result.append(_provider_summary(u, svcs))
+    result.sort(key=lambda x: (x["rating"], x["service_count"]), reverse=True)
+    return result
+
+
+@api_router.get("/providers/{provider_id}")
+async def get_provider(provider_id: str):
+    u = await db.users.find_one({"user_id": provider_id}, {"_id": 0})
+    if not u or (u.get("provider_status") != "approved" and u.get("role") != "admin"):
+        raise HTTPException(status_code=404, detail="Provider not found")
+    svcs = await db.services.find({"provider_id": provider_id, "status": "approved", "is_visible": True}, {"_id": 0}).sort("created_at", -1).to_list(500)
+    soc_map = {s["id"]: s.get("name", s["id"]) for s in await db.societies.find({}, {"_id": 0}).to_list(500)}
+    for s in svcs:
+        for slot in s.get("slots", []):
+            slot["society_names"] = [soc_map.get(x, x) for x in slot.get("societies", [])]
+    summary = _provider_summary(u, svcs)
+    summary["phone"] = u.get("phone", "")
+    summary["services"] = svcs
+    return summary
 
 
 # ---------------- Services (public / customer) ----------------
@@ -595,6 +685,50 @@ async def create_society(body: SocietyCreate, user=Depends(require_admin)):
 
 
 # ---------------- Seed demo data ----------------
+DEMO_PROVIDERS = [
+    {"user_id": "user_demoprov_fit", "email": "fit@uru.app", "name": "Arjun Rao", "business_name": "FitZone Academy",
+     "bio": "FitZone is a performance-first academy helping people of all ages build strength, stamina and confidence. We combine strength & conditioning with sport-specific coaching in cricket and football.",
+     "phone": "+91 90000 10001", "experience_years": 12,
+     "certifications": ["ACE Certified Personal Trainer", "Level 2 Cricket Coach (BCCI)", "AFC 'C' Football Coaching License"],
+     "specialties": ["Strength & Conditioning", "Cricket Coaching", "Football Coaching"],
+     "languages": ["English", "Hindi", "Marathi"], "rating": 4.9,
+     "avatar_url": "https://images.unsplash.com/photo-1758875568932-0eefd3e60090?crop=entropy&cs=srgb&fm=jpg&q=85&w=400"},
+    {"user_id": "user_demoprov_dojo", "email": "dojo@uru.app", "name": "Kenji Sato", "business_name": "Dragon Dojo",
+     "bio": "Traditional martial arts and skating coaching rooted in discipline and respect. Certified black-belt instructors train kids and adults in a safe, structured environment.",
+     "phone": "+91 90000 10002", "experience_years": 15,
+     "certifications": ["3rd Dan Black Belt — Shotokan Karate", "Certified Self-Defense Instructor", "First-Aid & CPR Certified"],
+     "specialties": ["Karate", "Self-Defense", "Roller Skating"],
+     "languages": ["English", "Hindi", "Japanese"], "rating": 4.8,
+     "avatar_url": "https://images.unsplash.com/photo-1544972917-3529b113a469?crop=entropy&cs=srgb&fm=jpg&q=85&w=400"},
+    {"user_id": "user_demoprov_arts", "email": "arts@uru.app", "name": "Meera Nair", "business_name": "Creative Minds Studio",
+     "bio": "A warm studio for art, craft and music. We nurture creativity in children and adults through drawing, painting and hands-on instrument lessons.",
+     "phone": "+91 90000 10003", "experience_years": 9,
+     "certifications": ["BFA — Fine Arts", "Trinity College London — Music Grade 8"],
+     "specialties": ["Drawing & Painting", "Guitar", "Keyboard"],
+     "languages": ["English", "Hindi", "Kannada"], "rating": 4.7,
+     "avatar_url": "https://images.unsplash.com/photo-1762757076979-cc016f6df284?crop=entropy&cs=srgb&fm=jpg&q=85&w=400"},
+    {"user_id": "user_demoprov_edu", "email": "edu@uru.app", "name": "Sunita Verma", "business_name": "Bright Scholars",
+     "bio": "After-school tuition that makes learning click. Small batches, personalised attention and a proven track record across Maths, Science and English for Grades 1–8.",
+     "phone": "+91 90000 10004", "experience_years": 14,
+     "certifications": ["B.Ed", "M.Sc — Mathematics", "10+ years CBSE curriculum experience"],
+     "specialties": ["Maths", "Science", "English"],
+     "languages": ["English", "Hindi"], "rating": 4.8,
+     "avatar_url": "https://images.unsplash.com/photo-1660463528633-aaa173d83fe4?crop=entropy&cs=srgb&fm=jpg&q=85&w=400"},
+]
+
+
+async def seed_providers():
+    for p in DEMO_PROVIDERS:
+        set_fields = {k: v for k, v in p.items() if k not in ("user_id", "email")}
+        set_fields.update({"role": "provider", "provider_status": "approved", "picture": p.get("avatar_url", "")})
+        await db.users.update_one(
+            {"user_id": p["user_id"]},
+            {"$set": set_fields,
+             "$setOnInsert": {"user_id": p["user_id"], "email": p["email"], "created_at": datetime.now(timezone.utc).isoformat()}},
+            upsert=True,
+        )
+
+
 async def seed_data():
     if await db.services.count_documents({}) > 0:
         return
@@ -602,15 +736,7 @@ async def seed_data():
     def item(name, price, dur=60):
         return {"id": f"item_{uuid.uuid4().hex[:10]}", "name": name, "price": price, "duration_min": dur}
 
-    providers = [
-        {"user_id": "user_demoprov_fit", "email": "fit@uru.app", "name": "Arjun Rao", "business_name": "FitZone Academy", "bio": "Strength training and sports coaching for all ages.", "phone": "+91 90000 10001"},
-        {"user_id": "user_demoprov_dojo", "email": "dojo@uru.app", "name": "Kenji Sato", "business_name": "Dragon Dojo", "bio": "Traditional martial arts and skating coaching.", "phone": "+91 90000 10002"},
-        {"user_id": "user_demoprov_arts", "email": "arts@uru.app", "name": "Meera Nair", "business_name": "Creative Minds Studio", "bio": "Art, craft and musical instrument classes.", "phone": "+91 90000 10003"},
-        {"user_id": "user_demoprov_edu", "email": "edu@uru.app", "name": "Sunita Verma", "business_name": "Bright Scholars", "bio": "After-school tuition for kids across subjects.", "phone": "+91 90000 10004"},
-    ]
-    for p in providers:
-        if not await db.users.find_one({"user_id": p["user_id"]}):
-            await db.users.insert_one({**p, "picture": "", "role": "provider", "provider_status": "approved", "created_at": datetime.now(timezone.utc).isoformat()})
+    # Providers are seeded separately in seed_providers()
 
     samples = [
         {"provider": "user_demoprov_fit", "provider_name": "FitZone Academy", "title": "Strength & Conditioning Gym", "category": "gym",
@@ -701,6 +827,7 @@ async def seed_societies():
 async def on_startup():
     await seed_categories()
     await seed_societies()
+    await seed_providers()
     await seed_data()
 
 

@@ -12,12 +12,14 @@ import CustomerLayout from "@/components/CustomerLayout";
 import ManageLayout from "@/components/ManageLayout";
 import Home from "@/customer/Home";
 import ServicePage from "@/customer/ServicePage";
+import ProviderPage from "@/customer/ProviderPage";
 import Cart from "@/customer/Cart";
 import Checkout from "@/customer/Checkout";
 import Bookings from "@/customer/Bookings";
 import Account from "@/customer/Account";
 import Onboard from "@/provider/Onboard";
 import ProviderDashboard from "@/provider/Dashboard";
+import ProviderProfile from "@/provider/Profile";
 import ProviderBookings from "@/provider/ProviderBookings";
 import AdminOverview from "@/admin/Overview";
 import AdminProviders from "@/admin/Providers";
@@ -37,6 +39,7 @@ function AppRouter() {
       <Route path="/app" element={<ProtectedRoute><CustomerLayout /></ProtectedRoute>}>
         <Route index element={<Home />} />
         <Route path="service/:id" element={<ServicePage />} />
+        <Route path="provider/:id" element={<ProviderPage />} />
         <Route path="cart" element={<Cart />} />
         <Route path="checkout" element={<Checkout />} />
         <Route path="bookings" element={<Bookings />} />
@@ -47,6 +50,7 @@ function AppRouter() {
       <Route path="/manage" element={<ProtectedRoute><ManageLayout /></ProtectedRoute>}>
         <Route index element={<Navigate to="/manage/provider/services" replace />} />
         <Route path="provider/services" element={<ProviderDashboard />} />
+        <Route path="provider/profile" element={<ProviderProfile />} />
         <Route path="provider/bookings" element={<ProviderBookings />} />
         <Route path="admin" element={<AdminOverview />} />
         <Route path="admin/providers" element={<AdminProviders />} />
