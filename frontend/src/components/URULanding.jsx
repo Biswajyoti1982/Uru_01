@@ -37,7 +37,7 @@ export default function URULanding() {
             Book trusted pros for anything you love
           </motion.h1>
           <p className="text-white/85 mt-4 text-[15px] leading-relaxed">
-            Salon, fitness, art, karate, skating and more — expert-led classes and services, booked in seconds.
+            Gym, martial arts, cricket, art, music and more — expert-led classes and coaching, booked in seconds.
           </p>
           <div className="flex items-center gap-1.5 mt-5 text-sm text-white/90">
             <Star className="h-4 w-4 fill-yellow-300 text-yellow-300" />
