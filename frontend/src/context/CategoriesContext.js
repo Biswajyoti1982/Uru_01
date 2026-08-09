@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from "react";
 import api from "@/lib/api";
 import { resolveIcon, DEFAULT_ICON } from "@/lib/catmeta";
 
@@ -11,21 +11,25 @@ export const CategoriesProvider = ({ children }) => {
     try {
       const res = await api.get("/categories");
       setRaw(res.data);
-    } catch (e) {}
+    } catch (e) {
+      console.error("Failed to load categories", e);
+    }
   }, []);
 
   useEffect(() => { load(); }, [load]);
 
-  const categories = raw.map((c) => ({ ...c, icon: resolveIcon(c.icon) }));
+  const categories = useMemo(() => raw.map((c) => ({ ...c, icon: resolveIcon(c.icon) })), [raw]);
 
-  const catMeta = (id) => {
+  const catMeta = useCallback((id) => {
     const c = raw.find((x) => x.id === id);
     if (!c) return { id, label: id, icon: DEFAULT_ICON, color: "#6D28D9" };
     return { ...c, icon: resolveIcon(c.icon) };
-  };
+  }, [raw]);
+
+  const value = useMemo(() => ({ categories, catMeta, reloadCategories: load }), [categories, catMeta, load]);
 
   return (
-    <CategoriesContext.Provider value={{ categories, catMeta, reloadCategories: load }}>
+    <CategoriesContext.Provider value={value}>
       {children}
     </CategoriesContext.Provider>
   );

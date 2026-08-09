@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from "react";
 
 const CartContext = createContext(null);
 const KEY = "uru_cart";
@@ -18,7 +18,7 @@ export const CartProvider = ({ children }) => {
   }, [cart]);
 
   // service = {id, title, image_url, provider_name, category}
-  const addItem = (service, item) => {
+  const addItem = useCallback((service, item) => {
     setCart((prev) => {
       if (!prev || prev.serviceId !== service.id) {
         return { serviceId: service.id, service, lines: { [item.id]: { item, qty: 1 } } };
@@ -27,9 +27,9 @@ export const CartProvider = ({ children }) => {
       lines[item.id] = { item, qty: (lines[item.id]?.qty || 0) + 1 };
       return { ...prev, lines };
     });
-  };
+  }, []);
 
-  const decItem = (itemId) => {
+  const decItem = useCallback((itemId) => {
     setCart((prev) => {
       if (!prev) return prev;
       const lines = { ...prev.lines };
@@ -40,15 +40,20 @@ export const CartProvider = ({ children }) => {
       if (Object.keys(lines).length === 0) return null;
       return { ...prev, lines };
     });
-  };
+  }, []);
 
-  const clearCart = () => setCart(null);
+  const clearCart = useCallback(() => setCart(null), []);
 
   const count = cart ? Object.values(cart.lines).reduce((a, l) => a + l.qty, 0) : 0;
   const total = cart ? Object.values(cart.lines).reduce((a, l) => a + l.item.price * l.qty, 0) : 0;
 
+  const value = useMemo(
+    () => ({ cart, addItem, decItem, clearCart, count, total }),
+    [cart, addItem, decItem, clearCart, count, total]
+  );
+
   return (
-    <CartContext.Provider value={{ cart, addItem, decItem, clearCart, count, total }}>
+    <CartContext.Provider value={value}>
       {children}
     </CartContext.Provider>
   );
