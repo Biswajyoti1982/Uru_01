@@ -38,6 +38,13 @@ DEFAULT_CATEGORIES = [
 
 TIME_SLOTS = ["09:00", "10:00", "11:00", "12:00", "14:00", "15:00", "16:00", "17:00", "18:00", "19:00"]
 
+DEFAULT_SOCIETIES = [
+    {"id": "soc_green_valley", "name": "Green Valley", "area": "Andheri, Mumbai"},
+    {"id": "soc_lake_view", "name": "Lake View Residency", "area": "Powai, Mumbai"},
+    {"id": "soc_sunrise", "name": "Sunrise Heights", "area": "Bandra, Mumbai"},
+    {"id": "soc_palm_grove", "name": "Palm Grove", "area": "Koramangala, Bengaluru"},
+]
+
 PLANS = {
     "monthly": {"id": "monthly", "label": "Monthly", "months": 1, "discount": 0.0},
     "quarterly": {"id": "quarterly", "label": "Quarterly", "months": 3, "discount": 0.10},
@@ -98,6 +105,8 @@ class BookingCreate(BaseModel):
     items: List[BookingItem]
     date: str
     time_slot: str
+    mode: str = "physical"
+    society_id: str = ""
     address: str
     plan: str = "monthly"
     notes: str = ""
@@ -107,6 +116,11 @@ class CategoryCreate(BaseModel):
     label: str
     icon: str = "sparkles"
     color: str = "#6D28D9"
+
+
+class SocietyCreate(BaseModel):
+    name: str
+    area: str = ""
 
 
 # ---------------- Auth helpers ----------------
@@ -158,6 +172,11 @@ async def get_categories():
     return cats
 
 
+@api_router.get("/societies")
+async def get_societies():
+    return await db.societies.find({}, {"_id": 0}).sort("order", 1).to_list(500)
+
+
 @api_router.post("/auth/session")
 async def create_session(response: Response, x_session_id: Optional[str] = Header(None)):
     if not x_session_id:
@@ -183,6 +202,8 @@ async def create_session(response: Response, x_session_id: Optional[str] = Heade
             "picture": data.get("picture", ""),
             "role": role,
             "provider_status": None,
+            "society_id": None,
+            "society_name": None,
             "created_at": datetime.now(timezone.utc).isoformat(),
         })
     session_token = data["session_token"]
@@ -289,7 +310,7 @@ async def create_service(body: ServiceCreate, user=Depends(require_provider)):
         "location": body.location,
         "items": _mk_items(body.items),
         "available_days": body.available_days,
-        "slots": body.slots,
+        "slots": [x.model_dump() for x in body.slots],
         "status": "pending",
         "is_visible": True,
         "created_at": datetime.now(timezone.utc).isoformat(),
@@ -306,7 +327,7 @@ async def update_service(service_id: str, body: ServiceCreate, user=Depends(requ
     await db.services.update_one({"id": service_id}, {"$set": {
         "title": body.title, "description": body.description, "category": body.category,
         "image_url": body.image_url, "location": body.location, "items": _mk_items(body.items),
-        "available_days": body.available_days, "slots": body.slots,
+        "available_days": body.available_days, "slots": [x.model_dump() for x in body.slots],
         "status": "pending",
     }})
     return await db.services.find_one({"id": service_id}, {"_id": 0})
@@ -357,13 +378,26 @@ async def create_booking(body: BookingCreate, user=Depends(get_current_user)):
     if not body.items:
         raise HTTPException(status_code=400, detail="No items selected")
     avail_days = svc.get("available_days") or []
-    avail_slots = svc.get("slots") or []
     if avail_days:
         wd = (datetime.strptime(body.date, "%Y-%m-%d").weekday() + 1) % 7
         if wd not in avail_days:
             raise HTTPException(status_code=400, detail="Provider is not available on this day")
-    if avail_slots and body.time_slot not in avail_slots:
+    svc_slots = svc.get("slots") or []
+    slot_cfg = next((s for s in svc_slots if s.get("time") == body.time_slot and s.get("mode") == body.mode), None)
+    if svc_slots and not slot_cfg:
         raise HTTPException(status_code=400, detail="Selected time slot is not available")
+    society_id = None
+    society_name = None
+    if body.mode == "physical":
+        if not body.society_id:
+            raise HTTPException(status_code=400, detail="Please select your society for physical classes")
+        soc = await db.societies.find_one({"id": body.society_id}, {"_id": 0})
+        if not soc:
+            raise HTTPException(status_code=404, detail="Society not found")
+        if slot_cfg and body.society_id not in (slot_cfg.get("societies") or []):
+            raise HTTPException(status_code=400, detail="This class is not offered in your society")
+        society_id = soc["id"]
+        society_name = soc["name"]
     line_items = []
     total = 0.0
     for bi in body.items:
@@ -397,6 +431,9 @@ async def create_booking(body: BookingCreate, user=Depends(get_current_user)):
         "total": grand_total,
         "date": body.date,
         "time_slot": body.time_slot,
+        "mode": body.mode,
+        "society_id": society_id,
+        "society_name": society_name,
         "start_date": body.date,
         "end_date": end_date,
         "address": body.address,
@@ -405,6 +442,8 @@ async def create_booking(body: BookingCreate, user=Depends(get_current_user)):
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
     await db.bookings.insert_one(doc)
+    if society_id:
+        await db.users.update_one({"user_id": user["user_id"]}, {"$set": {"society_id": society_id, "society_name": society_name}})
     return await db.bookings.find_one({"id": booking_id}, {"_id": 0})
 
 
@@ -514,6 +553,18 @@ async def create_category(body: CategoryCreate, user=Depends(require_admin)):
     return await db.categories.find_one({"id": slug}, {"_id": 0})
 
 
+@api_router.post("/admin/societies")
+async def create_society(body: SocietyCreate, user=Depends(require_admin)):
+    slug = "soc_" + re.sub(r"[^a-z0-9]+", "_", body.name.lower()).strip("_")
+    if slug == "soc_" or await db.societies.find_one({"id": slug}):
+        raise HTTPException(status_code=400, detail="Invalid or duplicate society")
+    count = await db.societies.count_documents({})
+    doc = {"id": slug, "name": body.name, "area": body.area, "order": count,
+           "created_at": datetime.now(timezone.utc).isoformat()}
+    await db.societies.insert_one(doc)
+    return await db.societies.find_one({"id": slug}, {"_id": 0})
+
+
 # ---------------- Seed demo data ----------------
 async def seed_data():
     if await db.services.count_documents({}) > 0:
@@ -586,7 +637,12 @@ async def seed_data():
             "location": s["location"],
             "items": s["items"],
             "available_days": s.get("available_days", [0, 1, 2, 3, 4, 5, 6]),
-            "slots": s.get("slots", TIME_SLOTS),
+            "slots": s.get("slots", [
+                {"time": "09:00", "mode": "physical", "societies": [x["id"] for x in DEFAULT_SOCIETIES]},
+                {"time": "10:00", "mode": "physical", "societies": [x["id"] for x in DEFAULT_SOCIETIES]},
+                {"time": "17:00", "mode": "virtual", "societies": []},
+                {"time": "18:00", "mode": "virtual", "societies": []},
+            ]),
             "status": "approved",
             "is_visible": True,
             "created_at": datetime.now(timezone.utc).isoformat(),
@@ -603,9 +659,19 @@ async def seed_categories():
         )
 
 
+async def seed_societies():
+    for i, s in enumerate(DEFAULT_SOCIETIES):
+        await db.societies.update_one(
+            {"id": s["id"]},
+            {"$setOnInsert": {**s, "order": i, "created_at": datetime.now(timezone.utc).isoformat()}},
+            upsert=True,
+        )
+
+
 @app.on_event("startup")
 async def on_startup():
     await seed_categories()
+    await seed_societies()
     await seed_data()
 
 
