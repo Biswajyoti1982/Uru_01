@@ -85,7 +85,7 @@ export default function ServicePage() {
                   <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
                     <Clock className="h-3 w-3" /> {it.duration_min} min
                   </p>
-                  <p className="text-sm font-bold text-gray-900 mt-1">{fmt(it.price)}</p>
+                  <p className="text-sm font-bold text-gray-900 mt-1">{fmt(it.price)}<span className="text-xs font-normal text-gray-400">/mo</span></p>
                 </div>
                 {qty === 0 ? (
                   <button

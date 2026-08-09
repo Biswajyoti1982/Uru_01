@@ -50,7 +50,7 @@ export default function Cart() {
             <div key={l.item.id} data-testid={`cart-line-${l.item.id}`} className="flex items-center gap-3 bg-white rounded-2xl border border-gray-100 p-4">
               <div className="flex-1">
                 <p className="text-sm font-semibold text-gray-900">{l.item.name}</p>
-                <p className="text-sm text-gray-500">{fmt(l.item.price)}</p>
+                <p className="text-sm text-gray-500">{fmt(l.item.price)}/mo</p>
               </div>
               <div className="flex items-center gap-3 rounded-full bg-[#6D28D9] text-white px-2 py-1.5">
                 <button data-testid={`cart-dec-${l.item.id}`} onClick={() => decItem(l.item.id)}><Minus className="h-4 w-4" /></button>
@@ -63,21 +63,21 @@ export default function Cart() {
 
         <div className="mt-5 bg-white rounded-2xl border border-gray-100 p-4">
           <div className="flex justify-between text-sm text-gray-600">
-            <span>Item total</span><span>{fmt(total)}</span>
+            <span>Per month</span><span>{fmt(total)}</span>
           </div>
           <div className="flex justify-between text-sm text-gray-600 mt-2">
             <span>Taxes & fees</span><span>{fmt(0)}</span>
           </div>
           <div className="border-t border-dashed border-gray-200 my-3" />
           <div className="flex justify-between text-base font-bold text-gray-900">
-            <span>Total</span><span data-testid="cart-total">{fmt(total)}</span>
+            <span>Total</span><span data-testid="cart-total">{fmt(total)}/mo</span>
           </div>
         </div>
       </div>
 
       <div className="absolute bottom-0 left-0 w-full bg-white border-t border-gray-200 px-4 py-3 flex items-center justify-between shadow-[0_-4px_10px_-2px_rgba(0,0,0,0.05)] z-40">
         <div>
-          <p className="text-xs text-gray-500">Total</p>
+          <p className="text-xs text-gray-500">Per month</p>
           <p className="text-base font-bold text-gray-900">{fmt(total)}</p>
         </div>
         <button

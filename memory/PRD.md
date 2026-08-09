@@ -56,6 +56,12 @@ Build an app where users subscribe to classes for different activities (gym trai
 ## Next Tasks
 - Gather feedback on the initial structure, then prioritize scheduling depth vs. payments.
 
+## Iteration 5 (2026-08-09) — Subscriptions (monthly/quarterly/yearly)
+- Bookings are now subscriptions. Item prices are per-month; checkout has a Plan step: Monthly, Quarterly (save 10%), Yearly (save 20%).
+- Backend computes per_month, months, discount, total, start_date and end_date (proper month math); stores plan on the booking with status "active".
+- UI: plan selection + summary breakdown; customer "My subscriptions" (tab "Plans") shows plan, weekly slot, run dates and total; provider "Subscribers" list shows plan & slot. Prices show "/mo".
+- Verified: quarterly 699/mo → ₹1,887 via curl; full UI flow (plan → address → weekly schedule → summary → confirm → My subscriptions).
+
 ## Iteration 4 (2026-08-09) — Per-provider availability
 - Each service now stores `available_days` (0=Sun..6=Sat) and `slots` (HH:MM list); replaces the global fixed TIME_SLOTS for booking.
 - Provider service editor has an Availability section (day toggles + time-slot grid). Checkout date row shows only available weekdays and only the provider's slots.

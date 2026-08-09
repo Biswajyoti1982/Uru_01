@@ -123,7 +123,7 @@ export default function Home() {
                 </p>
                 <div className="flex items-center justify-between mt-3">
                   <p className="text-sm text-gray-900 font-semibold">
-                    From {fmt(minPrice(s))}
+                    From {fmt(minPrice(s))}/mo
                   </p>
                   <span className="text-sm font-semibold text-[#6D28D9] flex items-center">
                     View <ChevronRight className="h-4 w-4" />

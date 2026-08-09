@@ -38,6 +38,22 @@ DEFAULT_CATEGORIES = [
 
 TIME_SLOTS = ["09:00", "10:00", "11:00", "12:00", "14:00", "15:00", "16:00", "17:00", "18:00", "19:00"]
 
+PLANS = {
+    "monthly": {"id": "monthly", "label": "Monthly", "months": 1, "discount": 0.0},
+    "quarterly": {"id": "quarterly", "label": "Quarterly", "months": 3, "discount": 0.10},
+    "yearly": {"id": "yearly", "label": "Yearly", "months": 12, "discount": 0.20},
+}
+
+
+def add_months(iso, months):
+    import calendar
+    y, m, d = map(int, iso.split("-"))
+    idx = (m - 1) + months
+    y2 = y + idx // 12
+    m2 = idx % 12 + 1
+    d2 = min(d, calendar.monthrange(y2, m2)[1])
+    return f"{y2:04d}-{m2:02d}-{d2:02d}"
+
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
@@ -83,6 +99,7 @@ class BookingCreate(BaseModel):
     date: str
     time_slot: str
     address: str
+    plan: str = "monthly"
     notes: str = ""
 
 
@@ -233,6 +250,11 @@ async def get_timeslots():
     return TIME_SLOTS
 
 
+@api_router.get("/plans")
+async def get_plans():
+    return list(PLANS.values())
+
+
 # ---------------- Provider service management ----------------
 @api_router.get("/provider/services")
 async def provider_services(user=Depends(require_provider)):
@@ -351,6 +373,10 @@ async def create_booking(body: BookingCreate, user=Depends(get_current_user)):
         qty = max(1, bi.qty)
         line_items.append({"item_id": it["id"], "name": it["name"], "price": it["price"], "qty": qty, "duration_min": it.get("duration_min", 60)})
         total += it["price"] * qty
+    per_month = round(total, 2)
+    plan = PLANS.get(body.plan) or PLANS["monthly"]
+    grand_total = round(per_month * plan["months"] * (1 - plan["discount"]))
+    end_date = add_months(body.date, plan["months"])
     booking_id = f"bkg_{uuid.uuid4().hex[:12]}"
     doc = {
         "id": booking_id,
@@ -364,12 +390,18 @@ async def create_booking(body: BookingCreate, user=Depends(get_current_user)):
         "customer_name": user.get("name", ""),
         "customer_email": user.get("email", ""),
         "items": line_items,
-        "total": round(total, 2),
+        "per_month": per_month,
+        "plan": plan["id"],
+        "plan_label": plan["label"],
+        "months": plan["months"],
+        "total": grand_total,
         "date": body.date,
         "time_slot": body.time_slot,
+        "start_date": body.date,
+        "end_date": end_date,
         "address": body.address,
         "notes": body.notes,
-        "status": "confirmed",
+        "status": "active",
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
     await db.bookings.insert_one(doc)

@@ -6,7 +6,7 @@ import { fmt } from "@/lib/format";
 
 const TABS = [
   { to: "/app", icon: Home, label: "Home", testid: "tab-home", exact: true },
-  { to: "/app/bookings", icon: CalendarCheck, label: "Bookings", testid: "tab-bookings" },
+  { to: "/app/bookings", icon: CalendarCheck, label: "Plans", testid: "tab-bookings" },
   { to: "/app/account", icon: User, label: "Account", testid: "tab-account" },
 ];
 

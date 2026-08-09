@@ -27,7 +27,7 @@ export default function Bookings() {
   return (
     <div>
       <div className="bg-white px-5 py-5 border-b border-gray-100">
-        <h1 className="font-display text-2xl font-bold text-gray-900">My bookings</h1>
+        <h1 className="font-display text-2xl font-bold text-gray-900">My subscriptions</h1>
       </div>
       <div className="px-5 py-4">
         {loading ? (
@@ -37,7 +37,7 @@ export default function Bookings() {
             <div className="h-16 w-16 rounded-2xl bg-gray-100 flex items-center justify-center mb-4">
               <CalendarCheck className="h-7 w-7 text-gray-300" />
             </div>
-            <h2 className="font-display text-xl font-bold text-gray-900">No bookings yet</h2>
+            <h2 className="font-display text-xl font-bold text-gray-900">No subscriptions yet</h2>
             <p className="text-sm text-gray-500 mt-1">Book a service to see it here.</p>
             <button data-testid="bookings-browse-button" onClick={() => navigate("/app")} className="mt-6 px-6 py-3 rounded-full bg-[#6D28D9] text-white font-semibold text-sm active:scale-95 transition-transform">Browse services</button>
           </div>
@@ -56,18 +56,19 @@ export default function Bookings() {
                         <span className={`text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full ${cancelled ? "bg-red-50 text-red-500" : "bg-emerald-50 text-emerald-600"}`}>{b.status}</span>
                       </div>
                       <p className="font-semibold text-gray-900 mt-1 truncate">{b.service_title}</p>
-                      <p className="text-xs text-gray-500 flex items-center gap-1 mt-1"><Clock className="h-3 w-3" /> {fmtDate(b.date)} · {b.time_slot}</p>
+                      <p className="text-xs text-gray-500 flex items-center gap-1 mt-1"><Clock className="h-3 w-3" /> {b.plan_label || "Monthly"} · weekly {b.time_slot}</p>
                     </div>
                   </div>
                   <div className="px-4 pb-3 -mt-1">
                     {b.items.map((li) => (
                       <div key={li.item_id} className="flex justify-between text-xs text-gray-600 py-0.5">
-                        <span>{li.name} × {li.qty}</span><span>{fmt(li.price * li.qty)}</span>
+                        <span>{li.name} × {li.qty}</span><span>{fmt(li.price * li.qty)}/mo</span>
                       </div>
                     ))}
-                    <p className="text-xs text-gray-400 flex items-center gap-1 mt-2"><MapPin className="h-3 w-3" /> {b.address}</p>
+                    <p className="text-xs text-gray-400 mt-2">Runs {fmtDate(b.start_date || b.date)} → {fmtDate(b.end_date || b.date)}</p>
+                    <p className="text-xs text-gray-400 flex items-center gap-1 mt-1"><MapPin className="h-3 w-3" /> {b.address}</p>
                     <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
-                      <span className="text-sm font-bold text-gray-900">{fmt(b.total)}</span>
+                      <span className="text-sm font-bold text-gray-900">{fmt(b.total)} <span className="text-xs font-normal text-gray-400">/ {b.plan_label || "Monthly"}</span></span>
                       {!cancelled && (
                         <button data-testid={`cancel-booking-${b.id}`} onClick={() => cancel(b.id)} className="text-xs font-medium text-red-500 flex items-center gap-1 active:scale-95 transition-transform">
                           <X className="h-3.5 w-3.5" /> Cancel
