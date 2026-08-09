@@ -22,7 +22,7 @@ db = client[os.environ['DB_NAME']]
 app = FastAPI()
 api_router = APIRouter(prefix="/api")
 
-ADMIN_EMAIL = "rrlfnlstrategy@gmail.com"
+ADMIN_EMAILS = {"rrlfnlstrategy@gmail.com", "connect@ubtan.in"}
 EMERGENT_SESSION_URL = "https://demobackend.emergentagent.com/auth/v1/env/oauth/session-data"
 
 DEFAULT_CATEGORIES = [
@@ -212,11 +212,11 @@ async def create_session(response: Response, x_session_id: Optional[str] = Heade
     existing = await db.users.find_one({"email": email}, {"_id": 0})
     if existing:
         user_id = existing["user_id"]
-        if email == ADMIN_EMAIL and existing.get("role") != "admin":
+        if email in ADMIN_EMAILS and existing.get("role") != "admin":
             await db.users.update_one({"user_id": user_id}, {"$set": {"role": "admin"}})
     else:
         user_id = f"user_{uuid.uuid4().hex[:12]}"
-        role = "admin" if email == ADMIN_EMAIL else "customer"
+        role = "admin" if email in ADMIN_EMAILS else "customer"
         await db.users.insert_one({
             "user_id": user_id,
             "email": email,
