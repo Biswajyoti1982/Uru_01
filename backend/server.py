@@ -559,6 +559,29 @@ async def create_category(body: CategoryCreate, user=Depends(require_admin)):
     return await db.categories.find_one({"id": slug}, {"_id": 0})
 
 
+@api_router.put("/admin/categories/{cat_id}")
+async def update_category(cat_id: str, body: CategoryCreate, user=Depends(require_admin)):
+    cat = await db.categories.find_one({"id": cat_id}, {"_id": 0})
+    if not cat:
+        raise HTTPException(status_code=404, detail="Category not found")
+    await db.categories.update_one({"id": cat_id}, {"$set": {
+        "label": body.label, "icon": body.icon, "color": body.color,
+    }})
+    return await db.categories.find_one({"id": cat_id}, {"_id": 0})
+
+
+@api_router.delete("/admin/categories/{cat_id}")
+async def delete_category(cat_id: str, user=Depends(require_admin)):
+    cat = await db.categories.find_one({"id": cat_id}, {"_id": 0})
+    if not cat:
+        raise HTTPException(status_code=404, detail="Category not found")
+    count = await db.services.count_documents({"category": cat_id})
+    if count > 0:
+        raise HTTPException(status_code=400, detail=f"Cannot delete — {count} service(s) use this activity")
+    await db.categories.delete_one({"id": cat_id})
+    return {"ok": True}
+
+
 @api_router.post("/admin/societies")
 async def create_society(body: SocietyCreate, user=Depends(require_admin)):
     slug = "soc_" + re.sub(r"[^a-z0-9]+", "_", body.name.lower()).strip("_")

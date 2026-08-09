@@ -3,7 +3,7 @@ import { toast } from "sonner";
 import api from "@/lib/api";
 import { resolveIcon, ICON_OPTIONS } from "@/lib/catmeta";
 import { useCategories } from "@/context/CategoriesContext";
-import { Plus } from "lucide-react";
+import { Plus, Pencil, Trash2, X } from "lucide-react";
 
 const COLORS = ["#6D28D9", "#EC4899", "#F97316", "#EF4444", "#06B6D4", "#10B981", "#3B82F6", "#8B5CF6", "#0EA5E9", "#6366F1"];
 
@@ -13,19 +13,29 @@ export default function AdminCategories() {
   const [label, setLabel] = useState("");
   const [icon, setIcon] = useState("sparkles");
   const [color, setColor] = useState("#6D28D9");
+  const [editId, setEditId] = useState(null);
   const [busy, setBusy] = useState(false);
 
   const load = async () => setCats((await api.get("/categories")).data);
   useEffect(() => { load(); }, []);
 
-  const create = async (e) => {
+  const resetForm = () => { setEditId(null); setLabel(""); setIcon("sparkles"); setColor("#6D28D9"); };
+
+  const startEdit = (c) => { setEditId(c.id); setLabel(c.label); setIcon(c.icon); setColor(c.color); };
+
+  const submit = async (e) => {
     e.preventDefault();
     if (!label.trim()) return toast.error("Name is required");
     setBusy(true);
     try {
-      await api.post("/admin/categories", { label, icon, color });
-      toast.success("Activity added");
-      setLabel(""); setIcon("sparkles"); setColor("#6D28D9");
+      if (editId) {
+        await api.put(`/admin/categories/${editId}`, { label, icon, color });
+        toast.success("Activity updated");
+      } else {
+        await api.post("/admin/categories", { label, icon, color });
+        toast.success("Activity added");
+      }
+      resetForm();
       await load();
       if (reloadCategories) reloadCategories();
     } catch (err) {
@@ -33,35 +43,53 @@ export default function AdminCategories() {
     } finally { setBusy(false); }
   };
 
+  const remove = async (c) => {
+    if (!window.confirm(`Delete "${c.label}"?`)) return;
+    try {
+      await api.delete(`/admin/categories/${c.id}`);
+      toast.success("Activity deleted");
+      if (editId === c.id) resetForm();
+      await load();
+      if (reloadCategories) reloadCategories();
+    } catch (err) {
+      toast.error(err.response?.data?.detail || "Failed to delete");
+    }
+  };
+
   return (
     <div>
       <div className="bg-white border-b border-gray-200 px-8 py-5">
         <h1 className="font-display text-2xl font-bold text-gray-900">Activities</h1>
-        <p className="text-sm text-gray-500">Manage the categories customers can browse</p>
+        <p className="text-sm text-gray-500">Create, edit and remove the categories customers can browse</p>
       </div>
       <div className="p-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Existing */}
         <div className="lg:col-span-2">
           <h2 className="font-display text-lg font-bold text-gray-900 mb-4">All activities</h2>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {cats.map((c) => {
               const Icon = resolveIcon(c.icon);
               return (
                 <div key={c.id} data-testid={`category-item-${c.id}`} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex items-center gap-3">
-                  <div className="h-11 w-11 rounded-xl flex items-center justify-center" style={{ background: `${c.color}18` }}>
+                  <div className="h-11 w-11 rounded-xl flex items-center justify-center shrink-0" style={{ background: `${c.color}18` }}>
                     <Icon className="h-5 w-5" style={{ color: c.color }} />
                   </div>
-                  <span className="text-sm font-semibold text-gray-900">{c.label}</span>
+                  <span className="text-sm font-semibold text-gray-900 flex-1 truncate">{c.label}</span>
+                  <button data-testid={`edit-category-${c.id}`} onClick={() => startEdit(c)} className="h-8 w-8 rounded-lg border border-gray-200 text-gray-500 hover:text-[#6D28D9] hover:border-[#6D28D9] flex items-center justify-center transition-colors"><Pencil className="h-3.5 w-3.5" /></button>
+                  <button data-testid={`delete-category-${c.id}`} onClick={() => remove(c)} className="h-8 w-8 rounded-lg border border-gray-200 text-gray-500 hover:text-red-500 hover:border-red-300 flex items-center justify-center transition-colors"><Trash2 className="h-3.5 w-3.5" /></button>
                 </div>
               );
             })}
           </div>
         </div>
 
-        {/* Create */}
+        {/* Create / Edit */}
         <div>
-          <h2 className="font-display text-lg font-bold text-gray-900 mb-4">New activity</h2>
-          <form onSubmit={create} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-display text-lg font-bold text-gray-900">{editId ? "Edit activity" : "New activity"}</h2>
+            {editId && <button data-testid="cancel-edit-category" onClick={resetForm} className="text-xs text-gray-500 hover:text-gray-800 flex items-center gap-1"><X className="h-3.5 w-3.5" /> Cancel</button>}
+          </div>
+          <form onSubmit={submit} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
             <div>
               <label className="text-xs font-medium text-gray-500 mb-1.5 block">Name</label>
               <input data-testid="category-name-input" value={label} onChange={(e) => setLabel(e.target.value)} placeholder="e.g. Swimming" className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 focus:border-[#6D28D9] outline-none" />
@@ -88,8 +116,8 @@ export default function AdminCategories() {
                 ))}
               </div>
             </div>
-            <button data-testid="create-category-button" disabled={busy} className="w-full h-11 rounded-full bg-[#6D28D9] text-white font-semibold flex items-center justify-center gap-2 disabled:opacity-50 active:scale-95 transition-transform">
-              <Plus className="h-4 w-4" /> {busy ? "Adding…" : "Add activity"}
+            <button data-testid={editId ? "update-category-button" : "create-category-button"} disabled={busy} className="w-full h-11 rounded-full bg-[#6D28D9] text-white font-semibold flex items-center justify-center gap-2 disabled:opacity-50 active:scale-95 transition-transform">
+              {editId ? <><Pencil className="h-4 w-4" /> {busy ? "Saving…" : "Save changes"}</> : <><Plus className="h-4 w-4" /> {busy ? "Adding…" : "Add activity"}</>}
             </button>
           </form>
         </div>
