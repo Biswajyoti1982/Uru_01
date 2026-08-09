@@ -4,8 +4,9 @@ import api from "@/lib/api";
 import { useCategories } from "@/context/CategoriesContext";
 import { fmt } from "@/lib/format";import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Store, Plus, Trash2, Layers, X } from "lucide-react";
+import { DAY_LABELS, PRESET_SLOTS } from "@/lib/slots";
 
-const emptyService = { title: "", description: "", category: "gym", image_url: "", location: "" };
+const emptyService = { title: "", description: "", category: "gym", image_url: "", location: "", available_days: [0, 1, 2, 3, 4, 5, 6], slots: ["09:00", "10:00", "11:00", "16:00", "17:00", "18:00"] };
 const emptyItem = { name: "", price: "", duration_min: 60 };
 
 const Badge = ({ status }) => {
@@ -43,10 +44,15 @@ export default function ProviderDashboard() {
   };
   const removeLocalItem = (id) => setItems(items.filter((i) => i.id !== id));
 
+  const toggleDay = (d) => setSvcForm((f) => ({ ...f, available_days: f.available_days.includes(d) ? f.available_days.filter((x) => x !== d) : [...f.available_days, d] }));
+  const toggleSlot = (s) => setSvcForm((f) => ({ ...f, slots: f.slots.includes(s) ? f.slots.filter((x) => x !== s) : [...f.slots, s] }));
+
   const save = async (e) => {
     e.preventDefault();
     if (!svcForm.title.trim()) return toast.error("Title required");
     if (items.length === 0) return toast.error("Add at least one service item");
+    if (!svcForm.available_days.length) return toast.error("Select at least one available day");
+    if (!svcForm.slots.length) return toast.error("Select at least one time slot");
     const payload = { ...svcForm, items: items.map((i) => ({ name: i.name, price: Number(i.price), duration_min: Number(i.duration_min) })) };
     try {
       if (editId) await api.put(`/provider/services/${editId}`, payload);
@@ -114,11 +120,33 @@ export default function ProviderDashboard() {
             <textarea data-testid="service-desc-input" className={inputCls} rows={2} placeholder="Description" value={svcForm.description} onChange={(e) => setSvcForm({ ...svcForm, description: e.target.value })} />
             <div className="grid grid-cols-2 gap-3">
               <select data-testid="service-category-select" className={inputCls} value={svcForm.category} onChange={(e) => setSvcForm({ ...svcForm, category: e.target.value })}>
-                {CATEGORIES.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
+                {categories.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
               </select>
               <input data-testid="service-location-input" className={inputCls} placeholder="Location" value={svcForm.location} onChange={(e) => setSvcForm({ ...svcForm, location: e.target.value })} />
             </div>
             <input data-testid="service-image-input" className={inputCls} placeholder="Image URL" value={svcForm.image_url} onChange={(e) => setSvcForm({ ...svcForm, image_url: e.target.value })} />
+
+            <div className="border border-gray-200 rounded-xl p-3">
+              <p className="text-sm font-semibold text-gray-900 mb-2">Availability</p>
+              <p className="text-xs text-gray-500 mb-1.5">Available days</p>
+              <div className="flex flex-wrap gap-2 mb-3">
+                {DAY_LABELS.map((lbl, idx) => {
+                  const on = svcForm.available_days.includes(idx);
+                  return (
+                    <button type="button" key={idx} data-testid={`day-${idx}`} onClick={() => toggleDay(idx)} className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${on ? "bg-[#6D28D9] text-white border-[#6D28D9]" : "border-gray-200 text-gray-600 hover:bg-gray-50"}`}>{lbl}</button>
+                  );
+                })}
+              </div>
+              <p className="text-xs text-gray-500 mb-1.5">Time slots</p>
+              <div className="grid grid-cols-4 gap-2">
+                {PRESET_SLOTS.map((s) => {
+                  const on = svcForm.slots.includes(s);
+                  return (
+                    <button type="button" key={s} data-testid={`slot-opt-${s}`} onClick={() => toggleSlot(s)} className={`py-2 rounded-lg text-xs font-medium border transition-colors ${on ? "bg-[#6D28D9] text-white border-[#6D28D9]" : "border-gray-200 text-gray-600 hover:bg-gray-50"}`}>{s}</button>
+                  );
+                })}
+              </div>
+            </div>
 
             <div className="border border-gray-200 rounded-xl p-3">
               <p className="text-sm font-semibold text-gray-900 mb-2">Service items</p>

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Star, MapPin, Clock, Plus, Minus, ShoppingBag } from "lucide-react";
 import api from "@/lib/api";
-import { catMeta } from "@/lib/catmeta";
+import { useCategories } from "@/context/CategoriesContext";
 import { fmt } from "@/lib/format";
 import { useCart } from "@/context/CartContext";
 

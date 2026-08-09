@@ -62,6 +62,8 @@ class ServiceCreate(BaseModel):
     image_url: str = ""
     location: str = ""
     items: List[ServiceItem] = []
+    available_days: List[int] = []
+    slots: List[str] = []
 
 
 class ItemCreate(BaseModel):
@@ -264,6 +266,8 @@ async def create_service(body: ServiceCreate, user=Depends(require_provider)):
         "image_url": body.image_url,
         "location": body.location,
         "items": _mk_items(body.items),
+        "available_days": body.available_days,
+        "slots": body.slots,
         "status": "pending",
         "is_visible": True,
         "created_at": datetime.now(timezone.utc).isoformat(),
@@ -280,6 +284,7 @@ async def update_service(service_id: str, body: ServiceCreate, user=Depends(requ
     await db.services.update_one({"id": service_id}, {"$set": {
         "title": body.title, "description": body.description, "category": body.category,
         "image_url": body.image_url, "location": body.location, "items": _mk_items(body.items),
+        "available_days": body.available_days, "slots": body.slots,
         "status": "pending",
     }})
     return await db.services.find_one({"id": service_id}, {"_id": 0})
@@ -329,6 +334,14 @@ async def create_booking(body: BookingCreate, user=Depends(get_current_user)):
     item_map = {i["id"]: i for i in svc.get("items", [])}
     if not body.items:
         raise HTTPException(status_code=400, detail="No items selected")
+    avail_days = svc.get("available_days") or []
+    avail_slots = svc.get("slots") or []
+    if avail_days:
+        wd = (datetime.strptime(body.date, "%Y-%m-%d").weekday() + 1) % 7
+        if wd not in avail_days:
+            raise HTTPException(status_code=400, detail="Provider is not available on this day")
+    if avail_slots and body.time_slot not in avail_slots:
+        raise HTTPException(status_code=400, detail="Selected time slot is not available")
     line_items = []
     total = 0.0
     for bi in body.items:
@@ -540,6 +553,8 @@ async def seed_data():
             "image_url": s["image_url"],
             "location": s["location"],
             "items": s["items"],
+            "available_days": s.get("available_days", [0, 1, 2, 3, 4, 5, 6]),
+            "slots": s.get("slots", TIME_SLOTS),
             "status": "approved",
             "is_visible": True,
             "created_at": datetime.now(timezone.utc).isoformat(),

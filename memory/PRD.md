@@ -55,3 +55,8 @@ Build an app where users subscribe to classes for different activities (gym trai
 
 ## Next Tasks
 - Gather feedback on the initial structure, then prioritize scheduling depth vs. payments.
+
+## Iteration 4 (2026-08-09) — Per-provider availability
+- Each service now stores `available_days` (0=Sun..6=Sat) and `slots` (HH:MM list); replaces the global fixed TIME_SLOTS for booking.
+- Provider service editor has an Availability section (day toggles + time-slot grid). Checkout date row shows only available weekdays and only the provider's slots.
+- Backend validates booking date/slot against the service's availability (400 otherwise). Verified via curl (bad slot→400, good→200) and UI (restricted service shows Mon/Wed/Fri + 3 slots).

@@ -1,28 +1,19 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { ArrowLeft, MapPin, CheckCircle2 } from "lucide-react";
 import api from "@/lib/api";
 import { useCart } from "@/context/CartContext";
 import { fmt, fmtDate } from "@/lib/format";
-
-const nextDays = (n) => {
-  const out = [];
-  for (let i = 0; i < n; i++) {
-    const d = new Date();
-    d.setDate(d.getDate() + i);
-    out.push(d.toISOString().slice(0, 10));
-  }
-  return out;
-};
+import { PRESET_SLOTS } from "@/lib/slots";
 
 export default function Checkout() {
   const navigate = useNavigate();
   const { cart, total, count, clearCart } = useCart();
   const [step, setStep] = useState(0); // 0 address, 1 slot, 2 summary
   const [address, setAddress] = useState("");
-  const [slots, setSlots] = useState([]);
-  const [date, setDate] = useState(nextDays(1)[0]);
+  const [svcData, setSvcData] = useState(null);
+  const [date, setDate] = useState("");
   const [slot, setSlot] = useState("");
   const [placing, setPlacing] = useState(false);
   const placedRef = useRef(false);
@@ -31,11 +22,29 @@ export default function Checkout() {
     if (placedRef.current) return;
     if (!cart || count === 0) navigate("/app/cart", { replace: true });
   }, [cart, count, navigate]);
-  useEffect(() => { api.get("/timeslots").then((r) => setSlots(r.data)); }, []);
+  useEffect(() => {
+    if (cart?.serviceId) api.get(`/services/${cart.serviceId}`).then((r) => setSvcData(r.data));
+  }, [cart?.serviceId]);
+
+  const availDays = svcData?.available_days?.length ? svcData.available_days : [0, 1, 2, 3, 4, 5, 6];
+  const slots = svcData?.slots?.length ? svcData.slots : PRESET_SLOTS;
+
+  const days = useMemo(() => {
+    const out = [];
+    for (let i = 0; i < 28 && out.length < 7; i++) {
+      const d = new Date();
+      d.setDate(d.getDate() + i);
+      if (availDays.includes(d.getDay())) out.push(d.toISOString().slice(0, 10));
+    }
+    return out;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [availDays.join(",")]);
+
+  useEffect(() => {
+    if (days.length && !days.includes(date)) setDate(days[0]);
+  }, [days, date]);
 
   if (!cart) return null;
-
-  const days = nextDays(7);
 
   const confirm = async () => {
     setPlacing(true);
