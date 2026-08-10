@@ -52,7 +52,7 @@ export default function URULanding() {
         <div className="bg-white rounded-3xl shadow-[0_8px_30px_rgba(0,0,0,0.08)] border border-gray-100 p-5 grid grid-cols-3 gap-4">
           {[
             { icon: Dumbbell, label: "Gym", c: "#F97316" },
-            { icon: Swords, label: "Martial", c: "#EF4444" },
+            { icon: Swords, label: "Martial Arts", c: "#EF4444" },
             { icon: Palette, label: "Art", c: "#8B5CF6" },
           ].map((x) => (
             <div key={x.label} className="flex flex-col items-center gap-2">
