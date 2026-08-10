@@ -716,6 +716,27 @@ DEMO_PROVIDERS = [
      "specialties": ["Maths", "Science", "English"],
      "languages": ["English", "Hindi"], "rating": 4.8,
      "avatar_url": "https://images.unsplash.com/photo-1660463528633-aaa173d83fe4?crop=entropy&cs=srgb&fm=jpg&q=85&w=400"},
+    {"user_id": "user_demoprov_iron", "email": "iron@uru.app", "name": "Vikram Singh", "business_name": "Iron Temple Fitness",
+     "bio": "A no-nonsense strength and functional-training gym. We build real-world fitness with CrossFit-style workouts and youth football conditioning.",
+     "phone": "+91 90000 10005", "experience_years": 7,
+     "certifications": ["NSCA Certified Strength & Conditioning Specialist", "CrossFit Level 1 Trainer"],
+     "specialties": ["CrossFit", "Strength Training", "Football Conditioning"],
+     "languages": ["English", "Hindi", "Punjabi"], "rating": 4.6,
+     "avatar_url": "https://images.unsplash.com/photo-1758875568932-0eefd3e60090?crop=entropy&cs=srgb&fm=jpg&q=85&w=400"},
+    {"user_id": "user_demoprov_warrior", "email": "warrior@uru.app", "name": "Rahul Mehta", "business_name": "Warrior Arts Academy",
+     "bio": "Modern martial arts and skating for confidence, fitness and focus. Small batches, big results, taught by national-level athletes.",
+     "phone": "+91 90000 10006", "experience_years": 11,
+     "certifications": ["2nd Dan Black Belt — Taekwondo", "Certified Kickboxing Coach"],
+     "specialties": ["Taekwondo", "Kickboxing", "Roller Skating"],
+     "languages": ["English", "Hindi"], "rating": 4.7,
+     "avatar_url": "https://images.unsplash.com/photo-1544972917-3529b113a469?crop=entropy&cs=srgb&fm=jpg&q=85&w=400"},
+    {"user_id": "user_demoprov_palette", "email": "palette@uru.app", "name": "Ananya Iyer", "business_name": "Palette Studio",
+     "bio": "A bright, friendly studio for budding artists and musicians. From watercolors to violin, we make creativity a joyful daily habit.",
+     "phone": "+91 90000 10007", "experience_years": 6,
+     "certifications": ["MA Visual Arts", "Trinity College — Violin Grade 6"],
+     "specialties": ["Watercolor", "Sketching", "Violin"],
+     "languages": ["English", "Hindi", "Tamil"], "rating": 4.6,
+     "avatar_url": "https://images.unsplash.com/photo-1762757076979-cc016f6df284?crop=entropy&cs=srgb&fm=jpg&q=85&w=400"},
 ]
 
 
@@ -729,6 +750,69 @@ async def seed_providers():
              "$setOnInsert": {"user_id": p["user_id"], "email": p["email"], "created_at": datetime.now(timezone.utc).isoformat()}},
             upsert=True,
         )
+
+
+EXTRA_SERVICES = [
+    {"id": "svc_iron_gym", "provider": "user_demoprov_iron", "provider_name": "Iron Temple Fitness", "category": "gym",
+     "title": "CrossFit & Functional Training", "location": "Powai, Mumbai",
+     "description": "High-intensity functional workouts to build strength, endurance and mobility for all levels.",
+     "image_url": "https://images.unsplash.com/photo-1576678927484-cc907957088c?crop=entropy&cs=srgb&fm=jpg&q=85&w=1200",
+     "items": [("Group CrossFit", 399, 60), ("Personal Coaching", 799, 60)]},
+    {"id": "svc_iron_football", "provider": "user_demoprov_iron", "provider_name": "Iron Temple Fitness", "category": "football",
+     "title": "Youth Football Conditioning", "location": "Powai, Mumbai",
+     "description": "Speed, agility and match-fitness training for young footballers.",
+     "image_url": "https://images.unsplash.com/photo-1551958219-acbc608c6377?crop=entropy&cs=srgb&fm=jpg&q=85&w=1200",
+     "items": [("U14 Conditioning", 449, 90)]},
+    {"id": "svc_warrior_martial", "provider": "user_demoprov_warrior", "provider_name": "Warrior Arts Academy", "category": "martial",
+     "title": "Taekwondo & Kickboxing", "location": "Andheri, Mumbai",
+     "description": "Build discipline, fitness and self-defense skills with national-level coaches.",
+     "image_url": "https://images.unsplash.com/photo-1555597408-26bc8e548a46?crop=entropy&cs=srgb&fm=jpg&q=85&w=1200",
+     "items": [("Kids Taekwondo", 399, 60), ("Adult Kickboxing", 549, 60)]},
+    {"id": "svc_warrior_skating", "provider": "user_demoprov_warrior", "provider_name": "Warrior Arts Academy", "category": "skating",
+     "title": "Roller Skating Club", "location": "Andheri, Mumbai",
+     "description": "Fun, safe skating coaching for beginners and intermediate skaters.",
+     "image_url": "https://images.unsplash.com/photo-1622640338505-2ad7465bda17?crop=entropy&cs=srgb&fm=jpg&q=85&w=1200",
+     "items": [("Skating Basics", 349, 60)]},
+    {"id": "svc_palette_art", "provider": "user_demoprov_palette", "provider_name": "Palette Studio", "category": "art",
+     "title": "Watercolor & Sketching", "location": "Indiranagar, Bengaluru",
+     "description": "Playful, structured art classes covering watercolors, sketching and mixed media.",
+     "image_url": "https://images.unsplash.com/photo-1605627079912-97c3810a11a4?crop=entropy&cs=srgb&fm=jpg&q=85&w=1200",
+     "items": [("Watercolor Workshop", 449, 90), ("Sketching Basics", 349, 60)]},
+    {"id": "svc_palette_music", "provider": "user_demoprov_palette", "provider_name": "Palette Studio", "category": "music",
+     "title": "Violin Lessons", "location": "Indiranagar, Bengaluru",
+     "description": "One-on-one and small-group violin lessons with a focus on technique and theory.",
+     "image_url": "https://images.unsplash.com/photo-1510915361894-db8b60106cb1?crop=entropy&cs=srgb&fm=jpg&q=85&w=1200",
+     "items": [("Beginner Violin", 549, 45)]},
+]
+
+
+async def seed_more_services():
+    default_slots = [
+        {"time": "09:00", "mode": "physical", "societies": [x["id"] for x in DEFAULT_SOCIETIES]},
+        {"time": "10:00", "mode": "physical", "societies": [x["id"] for x in DEFAULT_SOCIETIES]},
+        {"time": "17:00", "mode": "virtual", "societies": []},
+        {"time": "18:00", "mode": "virtual", "societies": []},
+    ]
+    for spec in EXTRA_SERVICES:
+        if await db.services.find_one({"id": spec["id"]}):
+            continue
+        items = [{"id": f"item_{uuid.uuid4().hex[:10]}", "name": n, "price": p, "duration_min": d} for (n, p, d) in spec["items"]]
+        await db.services.insert_one({
+            "id": spec["id"],
+            "provider_id": spec["provider"],
+            "provider_name": spec["provider_name"],
+            "title": spec["title"],
+            "description": spec["description"],
+            "category": spec["category"],
+            "image_url": spec["image_url"],
+            "location": spec["location"],
+            "items": items,
+            "available_days": [0, 1, 2, 3, 4, 5, 6],
+            "slots": default_slots,
+            "status": "approved",
+            "is_visible": True,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        })
 
 
 async def seed_data():
@@ -831,6 +915,7 @@ async def on_startup():
     await seed_societies()
     await seed_providers()
     await seed_data()
+    await seed_more_services()
 
 
 app.include_router(api_router)

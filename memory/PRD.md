@@ -68,6 +68,13 @@ Build an app where users subscribe to classes for different activities (gym trai
 - Backend validates booking date/slot against the service's availability (400 otherwise). Verified via curl (bad slot→400, good→200) and UI (restricted service shows Mon/Wed/Fri + 3 slots).
 
 
+## Iteration 8 (2026-06) — Activity → providers list + Home discovery
+- **Home (post-login)** now shows: Activities grid → **Popular classes** (horizontal, ranked by real active-subscriber count via `GET /api/services`) with a **See all** link (`/app/classes`) → **Top providers**.
+- **Activity/class click → providers list**: tapping an activity icon or a class card opens `/app/providers?category=<cat>` listing ALL providers offering that activity; tapping a specific provider card opens their page to book.
+- New customer pages: `Classes.jsx` (`/app/classes`), `ProvidersList.jsx` (`/app/providers`).
+- Seeded 3 extra providers (Iron Temple Fitness, Warrior Arts Academy, Palette Studio) idempotently via `seed_more_services()` so most activities now have multiple providers.
+- Multiple admins supported via `ADMIN_EMAILS` allowlist (rrlfnlstrategy@gmail.com, connect@ubtan.in); connect@ubtan.in promoted to admin.
+
 ## Iteration 7 (2026-06) — Provider-centric browsing + profiles
 - **Browse flow changed**: tapping an activity on Home now shows a list of **providers** (coaches) offering it, not raw service cards. Provider cards show avatar, rating, experience, specialties, price-from.
 - **Provider page** (`/app/provider/:id`): profile photo, rating, years of experience, languages, about/bio, certifications/qualifications, and all classes grouped by activity with items/prices and virtual/physical slot previews (physical shows society names). Add-to-cart → existing checkout.

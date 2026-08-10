@@ -10,17 +10,15 @@ import { useAuth } from "@/context/AuthContext";
 export default function Home() {
   const [services, setServices] = useState([]);
   const [providers, setProviders] = useState([]);
-  const [active, setActive] = useState("");
   const [q, setQ] = useState("");
   const navigate = useNavigate();
   const { user } = useAuth();
   const { categories, catMeta } = useCategories();
 
   useEffect(() => {
-    const params = active ? { category: active } : {};
-    api.get("/services", { params }).then((r) => setServices(r.data));
-    api.get("/providers", { params }).then((r) => setProviders(r.data));
-  }, [active]);
+    api.get("/services").then((r) => setServices(r.data));
+    api.get("/providers").then((r) => setProviders(r.data));
+  }, []);
 
   const ql = q.toLowerCase();
   const minPrice = (s) => (s.items?.length ? Math.min(...s.items.map((i) => i.price)) : 0);
@@ -51,35 +49,29 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Categories */}
+      {/* Categories — tap to see providers for that activity */}
       <div className="px-5 mt-6">
         <div className="flex items-center justify-between mb-3">
           <h2 className="font-display text-lg font-bold text-gray-900">Activities</h2>
-          {active && <button data-testid="clear-category" onClick={() => setActive("")} className="text-xs font-medium text-[#6D28D9]">Clear</button>}
         </div>
         <div className="grid grid-cols-4 gap-3">
-          {categories.map((c) => {
-            const on = active === c.id;
-            return (
-              <button key={c.id} data-testid={`category-${c.id}`} onClick={() => setActive(on ? "" : c.id)} className="flex flex-col items-center gap-1.5 active:scale-95 transition-transform">
-                <div className={`h-14 w-14 rounded-2xl flex items-center justify-center border ${on ? "border-[#6D28D9] ring-2 ring-[#6D28D9]/30" : "border-transparent"}`} style={{ background: `${c.color}18` }}>
-                  <c.icon className="h-6 w-6" style={{ color: c.color }} />
-                </div>
-                <span className="text-[10px] text-gray-600 font-medium text-center leading-tight">{c.label}</span>
-              </button>
-            );
-          })}
+          {categories.map((c) => (
+            <button key={c.id} data-testid={`category-${c.id}`} onClick={() => navigate(`/app/providers?category=${c.id}`)} className="flex flex-col items-center gap-1.5 active:scale-95 transition-transform">
+              <div className="h-14 w-14 rounded-2xl flex items-center justify-center border border-transparent" style={{ background: `${c.color}18` }}>
+                <c.icon className="h-6 w-6" style={{ color: c.color }} />
+              </div>
+              <span className="text-[10px] text-gray-600 font-medium text-center leading-tight">{c.label}</span>
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* Popular services */}
+      {/* Popular classes — tap opens providers offering that activity */}
       <div className="mt-7">
         <div className="flex items-center justify-between mb-3 px-5">
-          <h2 className="font-display text-lg font-bold text-gray-900">
-            {active ? `Popular ${catMeta(active).label} classes` : "Popular classes"}
-          </h2>
+          <h2 className="font-display text-lg font-bold text-gray-900">Popular classes</h2>
           {svcFiltered.length > 0 && (
-            <button data-testid="see-all-classes" onClick={() => navigate(`/app/classes${active ? `?category=${active}` : ""}`)} className="text-xs font-semibold text-[#6D28D9] flex items-center">
+            <button data-testid="see-all-classes" onClick={() => navigate("/app/classes")} className="text-xs font-semibold text-[#6D28D9] flex items-center">
               See all <ChevronRight className="h-4 w-4" />
             </button>
           )}
@@ -95,7 +87,7 @@ export default function Home() {
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.05 }}
-                onClick={() => navigate(`/app/provider/${s.provider_id}`)}
+                onClick={() => navigate(`/app/providers?category=${s.category}`)}
                 className="text-left bg-white rounded-3xl overflow-hidden border border-gray-100 shadow-sm active:scale-[0.98] transition-transform shrink-0 w-[240px]"
               >
                 <div className="h-28 w-full overflow-hidden bg-gray-100">
@@ -118,9 +110,7 @@ export default function Home() {
       {/* Top providers */}
       <div className="px-5 mt-7">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="font-display text-lg font-bold text-gray-900">
-            {active ? `${catMeta(active).label} coaches` : "Top providers near you"}
-          </h2>
+          <h2 className="font-display text-lg font-bold text-gray-900">Top providers near you</h2>
         </div>
         <div className="space-y-4">
           {provFiltered.length === 0 && <p className="text-sm text-gray-400 py-8 text-center">No providers found.</p>}
