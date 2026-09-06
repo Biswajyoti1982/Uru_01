@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Search, MapPin, Star, ChevronRight, Award, ShieldCheck, Dumbbell, Sparkles } from "lucide-react";
+import { Search, MapPin, Star, ChevronRight, Award, ShieldCheck, Sparkles } from "lucide-react";
+import { UruLogo } from "@/components/UruLogo";
 import api from "@/lib/api";
 import { fmt } from "@/lib/format";
 import { useAuth } from "@/context/AuthContext";
@@ -68,9 +69,12 @@ export default function Home() {
         <div className="absolute inset-0 bg-gradient-to-t from-[#111827] via-[#111827]/70 to-[#111827]/30" />
         <div className="relative">
           <div className="flex items-center justify-between">
-            <div>
-              <p className="text-[11px] text-white/60 flex items-center gap-1"><MapPin className="h-3 w-3" /> Mumbai, India</p>
-              <p className="text-sm font-semibold flex items-center gap-1.5"><Dumbbell className="h-4 w-4 text-[#F97316]" /> URU Gym Trainers</p>
+            <div className="flex items-center gap-2.5">
+              <UruLogo size={40} />
+              <div>
+                <p className="text-[11px] text-white/60 flex items-center gap-1"><MapPin className="h-3 w-3" /> Mumbai, India</p>
+                <p className="text-sm font-semibold">URU Gym Trainers</p>
+              </div>
             </div>
             <button data-testid="home-avatar" onClick={() => navigate("/app/account")} className="h-10 w-10 rounded-full bg-white/15 flex items-center justify-center font-semibold active:scale-95 transition-transform">
               {user?.name?.[0]?.toUpperCase() || "U"}

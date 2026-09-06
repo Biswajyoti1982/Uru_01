@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import { Outlet, NavLink, useNavigate, Navigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
-import { Sparkles, Store, ClipboardList, LayoutDashboard, Users, ShieldCheck, ArrowLeft, LayoutGrid, Building2, UserCog, Menu, X } from "lucide-react";
+import { Store, ClipboardList, LayoutDashboard, Users, ShieldCheck, ArrowLeft, LayoutGrid, Building2, UserCog, Menu, X } from "lucide-react";
+import { UruLogo } from "@/components/UruLogo";
 
 const Item = ({ to, icon: Icon, label, testid, end, onClick }) => (
   <NavLink
@@ -39,9 +40,7 @@ export default function ManageLayout() {
           <Menu className="h-5 w-5 text-gray-700" />
         </button>
         <div className="flex items-center gap-2">
-          <div className="h-7 w-7 rounded-lg bg-[#6D28D9] flex items-center justify-center">
-            <Sparkles className="h-3.5 w-3.5 text-white" />
-          </div>
+          <UruLogo size={28} />
           <span className="font-display text-lg font-bold">URU <span className="text-gray-400 font-medium text-xs">Console</span></span>
         </div>
       </div>
@@ -52,9 +51,7 @@ export default function ManageLayout() {
       {/* Sidebar */}
       <aside className={`fixed top-0 left-0 h-screen w-64 bg-white border-r border-gray-200 flex flex-col z-50 transform transition-transform duration-200 lg:translate-x-0 ${open ? "translate-x-0" : "-translate-x-full"}`}>
         <div className="h-16 flex items-center gap-2 px-6 border-b border-gray-100">
-          <div className="h-8 w-8 rounded-xl bg-[#6D28D9] flex items-center justify-center">
-            <Sparkles className="h-4 w-4 text-white" />
-          </div>
+          <UruLogo size={32} />
           <span className="font-display text-xl font-bold">URU <span className="text-gray-400 font-medium text-sm">Console</span></span>
           <button data-testid="menu-close-button" onClick={close} className="lg:hidden ml-auto h-8 w-8 rounded-lg flex items-center justify-center hover:bg-gray-100">
             <X className="h-4 w-4 text-gray-500" />

@@ -1,6 +1,7 @@
 import React from "react";
 import { motion } from "framer-motion";
-import { Sparkles, Dumbbell, HeartPulse, Trophy, ArrowRight, Star } from "lucide-react";
+import { Dumbbell, HeartPulse, Trophy, ArrowRight, Star } from "lucide-react";
+import { UruLogo } from "@/components/UruLogo";
 
 // REMINDER: DO NOT HARDCODE THE URL, OR ADD ANY FALLBACKS OR REDIRECT URLS, THIS BREAKS THE AUTH
 const login = () => {
@@ -22,11 +23,8 @@ export default function URULanding() {
           <div className="absolute inset-0 bg-gradient-to-b from-[#6D28D9]/85 via-[#6D28D9]/70 to-[#5B21B6]/95" />
         </div>
         <div className="relative px-6 pt-14 pb-16 text-white">
-          <div className="flex items-center gap-2">
-            <div className="h-9 w-9 rounded-2xl bg-white flex items-center justify-center">
-              <Sparkles className="h-5 w-5 text-[#6D28D9]" />
-            </div>
-            <span className="font-display text-2xl font-bold tracking-tight">URU</span>
+          <div className="flex items-center gap-2.5">
+            <UruLogo size={48} />
           </div>
           <motion.h1
             initial={{ opacity: 0, y: 20 }}
