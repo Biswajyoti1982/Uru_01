@@ -8,6 +8,7 @@ import { CategoriesProvider } from "@/context/CategoriesContext";
 import AuthCallback from "@/components/AuthCallback";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import Landing from "@/components/URULanding";
+import Welcome from "@/components/Welcome";
 import CustomerLayout from "@/components/CustomerLayout";
 import ManageLayout from "@/components/ManageLayout";
 import Home from "@/customer/Home";
@@ -29,6 +30,11 @@ import AdminServices from "@/admin/Services";
 import AdminCategories from "@/admin/Categories";
 import AdminSocieties from "@/admin/Societies";
 
+function Entry() {
+  if (sessionStorage.getItem("uru_welcomed") === "1") return <Landing />;
+  return <Welcome />;
+}
+
 function AppRouter() {
   const location = useLocation();
   if (location.hash?.includes("session_id=")) {
@@ -36,7 +42,7 @@ function AppRouter() {
   }
   return (
     <Routes>
-      <Route path="/" element={<Landing />} />
+      <Route path="/" element={<Entry />} />
 
       <Route path="/app" element={<ProtectedRoute><CustomerLayout /></ProtectedRoute>}>
         <Route index element={<Home />} />
