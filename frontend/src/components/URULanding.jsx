@@ -20,7 +20,7 @@ export default function URULanding() {
             alt="Gym trainer coaching a client"
             className="h-full w-full object-cover"
           />
-          <div className="absolute inset-0 bg-gradient-to-b from-[#6D28D9]/85 via-[#6D28D9]/70 to-[#5B21B6]/95" />
+          <div className="absolute inset-0 bg-gradient-to-b from-[#111827]/80 via-[#111827]/75 to-[#111827]/95" />
         </div>
         <div className="relative px-6 pt-14 pb-16 text-white">
           <div className="flex items-center gap-2.5">
@@ -32,7 +32,7 @@ export default function URULanding() {
             transition={{ duration: 0.5 }}
             className="font-display text-4xl font-bold leading-tight mt-10"
           >
-            Find your perfect gym trainer
+            Find your perfect <span className="text-[#F97316]">gym trainer</span>
           </motion.h1>
           <p className="text-white/85 mt-4 text-[15px] leading-relaxed">
             Certified gym trainers near you — personal, small-group and online coaching, booked in seconds.
@@ -70,7 +70,7 @@ export default function URULanding() {
         <button
           data-testid="landing-login-button"
           onClick={login}
-          className="w-full h-14 rounded-full bg-[#6D28D9] text-white font-semibold text-base flex items-center justify-center gap-2 active:scale-95 transition-transform shadow-lg shadow-[#6D28D9]/25"
+          className="w-full h-14 rounded-full bg-[#F97316] text-white font-semibold text-base flex items-center justify-center gap-2 active:scale-95 transition-transform shadow-lg shadow-[#F97316]/30"
         >
           Continue with Google <ArrowRight className="h-5 w-5" />
         </button>
