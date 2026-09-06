@@ -6,8 +6,9 @@ import { fmt } from "@/lib/format";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Store, Plus, Trash2, Layers, X, Video, MapPin } from "lucide-react";
 import { DAY_LABELS, PRESET_SLOTS } from "@/lib/slots";
+import { FOCUS_AREAS, BATCH_TYPES, CLIENT_LEVELS } from "@/lib/trainerOptions";
 
-const emptyService = { title: "", description: "", category: "gym", image_url: "", location: "", available_days: [0, 1, 2, 3, 4, 5, 6], slots: [], gender: "all", age_group: "all", experience_level: "all", eligibility: "" };
+const emptyService = { title: "", description: "", category: "gym", image_url: "", location: "", available_days: [0, 1, 2, 3, 4, 5, 6], slots: [], gender: "all", age_group: "all", experience_level: "all", eligibility: "", focus_areas: [], batch_types: [], client_levels: [] };
 const emptyItem = { name: "", price: "", duration_min: 60 };
 const emptyDraft = { time: "09:00", mode: "physical", societies: [], batch_size: 10 };
 
@@ -43,7 +44,7 @@ export default function ProviderDashboard() {
 
   const openNew = () => { setSvcForm(emptyService); setItems([]); setItemForm(emptyItem); setDraft(emptyDraft); setEditId(null); setSvcOpen(true); };
   const openEdit = (s) => {
-    setSvcForm({ title: s.title, description: s.description, category: s.category, image_url: s.image_url, location: s.location, available_days: s.available_days || [0, 1, 2, 3, 4, 5, 6], slots: s.slots || [], gender: s.gender || "all", age_group: s.age_group || "all", experience_level: s.experience_level || "all", eligibility: s.eligibility || "" });
+    setSvcForm({ title: s.title, description: s.description, category: s.category, image_url: s.image_url, location: s.location, available_days: s.available_days || [0, 1, 2, 3, 4, 5, 6], slots: s.slots || [], gender: s.gender || "all", age_group: s.age_group || "all", experience_level: s.experience_level || "all", eligibility: s.eligibility || "", focus_areas: s.focus_areas || [], batch_types: s.batch_types || [], client_levels: s.client_levels || [] });
     setItems(s.items || []); setItemForm(emptyItem); setDraft(emptyDraft); setEditId(s.id); setSvcOpen(true);
   };
 
@@ -55,6 +56,8 @@ export default function ProviderDashboard() {
   const removeLocalItem = (id) => setItems(items.filter((i) => i.id !== id));
 
   const toggleDay = (d) => setSvcForm((f) => ({ ...f, available_days: f.available_days.includes(d) ? f.available_days.filter((x) => x !== d) : [...f.available_days, d] }));
+
+  const toggleArr = (field, val) => setSvcForm((f) => ({ ...f, [field]: f[field].includes(val) ? f[field].filter((x) => x !== val) : [...f[field], val] }));
 
   const toggleDraftSociety = (id) => setDraft((d) => ({ ...d, societies: d.societies.includes(id) ? d.societies.filter((x) => x !== id) : [...d.societies, id] }));
 
@@ -145,6 +148,24 @@ export default function ProviderDashboard() {
               <input data-testid="service-location-input" className={inputCls} placeholder="Location" value={svcForm.location} onChange={(e) => setSvcForm({ ...svcForm, location: e.target.value })} />
             </div>
             <input data-testid="service-image-input" className={inputCls} placeholder="Image URL" value={svcForm.image_url} onChange={(e) => setSvcForm({ ...svcForm, image_url: e.target.value })} />
+
+            <div className="border border-gray-200 rounded-xl p-3 space-y-3">
+              <p className="text-sm font-semibold text-gray-900">Training focus & level</p>
+              <p className="text-xs text-gray-500 -mt-2">Match customers by their goal, preferred batch type and level.</p>
+              {[["Focus areas", FOCUS_AREAS, "focus_areas", "focus"], ["Batch type", BATCH_TYPES, "batch_types", "batch"], ["Client level", CLIENT_LEVELS, "client_levels", "level"]].map(([lbl, opts, field, prefix]) => (
+                <div key={field}>
+                  <p className="text-xs text-gray-500 mb-1.5">{lbl}</p>
+                  <div className="flex flex-wrap gap-2">
+                    {opts.map((o) => {
+                      const on = svcForm[field].includes(o.id);
+                      return (
+                        <button type="button" key={o.id} data-testid={`svc-${prefix}-${o.id}`} onClick={() => toggleArr(field, o.id)} className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${on ? "bg-[#6D28D9] text-white border-[#6D28D9]" : "border-gray-200 text-gray-600 hover:bg-gray-50"}`}>{o.label}</button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
 
             <div className="border border-gray-200 rounded-xl p-3">
               <p className="text-sm font-semibold text-gray-900 mb-2">Eligibility & audience</p>

@@ -121,6 +121,9 @@ class ServiceCreate(BaseModel):
     age_group: str = "all"
     experience_level: str = "all"
     eligibility: str = ""
+    focus_areas: List[str] = []
+    batch_types: List[str] = []
+    client_levels: List[str] = []
 
 
 class ItemCreate(BaseModel):
@@ -327,6 +330,9 @@ def _provider_summary(u, svcs):
         "genders": sorted({s.get("gender", "all") for s in svcs}),
         "age_groups": sorted({s.get("age_group", "all") for s in svcs}),
         "experience_levels": sorted({s.get("experience_level", "all") for s in svcs}),
+        "focus_areas": sorted({f for s in svcs for f in s.get("focus_areas", [])}),
+        "batch_types": sorted({b for s in svcs for b in s.get("batch_types", [])}),
+        "client_levels": sorted({c for s in svcs for c in s.get("client_levels", [])}),
         "service_count": len(svcs),
     }
 
@@ -441,6 +447,9 @@ async def create_service(body: ServiceCreate, user=Depends(require_provider)):
         "age_group": body.age_group,
         "experience_level": body.experience_level,
         "eligibility": body.eligibility,
+        "focus_areas": body.focus_areas,
+        "batch_types": body.batch_types,
+        "client_levels": body.client_levels,
         "status": "pending",
         "is_visible": True,
         "created_at": datetime.now(timezone.utc).isoformat(),
@@ -460,6 +469,7 @@ async def update_service(service_id: str, body: ServiceCreate, user=Depends(requ
         "available_days": body.available_days, "slots": [x.model_dump() for x in body.slots],
         "gender": body.gender, "age_group": body.age_group,
         "experience_level": body.experience_level, "eligibility": body.eligibility,
+        "focus_areas": body.focus_areas, "batch_types": body.batch_types, "client_levels": body.client_levels,
         "status": "pending",
     }})
     return await db.services.find_one({"id": service_id}, {"_id": 0})

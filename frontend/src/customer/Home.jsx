@@ -21,10 +21,17 @@ function scoreProvider(p, ans) {
   if (!ans) return 0;
   let s = 0;
   const specs = (p.specialties || []).map((x) => x.toLowerCase());
+  if (ans.goal && (p.focus_areas || []).includes(ans.goal)) s += 4;
   const kw = GOAL_KEYWORDS[ans.goal] || [];
-  for (const sp of specs) if (kw.some((k) => sp.includes(k))) s += 3;
+  for (const sp of specs) if (kw.some((k) => sp.includes(k))) s += 2;
+  if (ans.format && (p.batch_types || []).includes(ans.format)) s += 2;
+  const clvl = (p.client_levels || []).map((x) => x.toLowerCase());
   const levels = (p.experience_levels || []).map((x) => x.toLowerCase());
-  if (ans.experience && (levels.includes(ans.experience.toLowerCase()) || levels.includes("all levels") || levels.includes("all"))) s += 1;
+  if (ans.experience) {
+    const e = ans.experience.toLowerCase();
+    if (clvl.includes(e)) s += 2;
+    else if (levels.includes(e) || levels.includes("all levels") || levels.includes("all")) s += 1;
+  }
   s += (p.rating || 0) / 10;
   return s;
 }
