@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Outlet, NavLink, useNavigate, Navigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
-import { Store, ClipboardList, LayoutDashboard, Users, ShieldCheck, ArrowLeft, LayoutGrid, Building2, UserCog, Menu, X } from "lucide-react";
+import { Store, ClipboardList, LayoutDashboard, Users, ShieldCheck, ArrowLeft, LayoutGrid, Building2, UserCog, Menu, X, Eye } from "lucide-react";
 import { UruLogo } from "@/components/UruLogo";
 
 const Item = ({ to, icon: Icon, label, testid, end, onClick }) => (
@@ -78,7 +78,14 @@ export default function ManageLayout() {
             </>
           )}
         </nav>
-        <div className="p-3 border-t border-white/10">
+        <div className="p-3 border-t border-white/10 space-y-2">
+          <button
+            data-testid="preview-customer-app-button"
+            onClick={() => window.open("/app?preview=1", "_blank")}
+            className="w-full flex items-center justify-center gap-2 rounded-xl bg-[#F97316]/10 text-[#F97316] hover:bg-[#F97316]/20 py-2.5 text-sm font-semibold transition-colors"
+          >
+            <Eye className="h-4 w-4" /> Preview as customer
+          </button>
           <button
             data-testid="back-to-app-button"
             onClick={() => navigate("/app")}

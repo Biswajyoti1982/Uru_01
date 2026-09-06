@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from "react";
-import { useNavigate, Navigate } from "react-router-dom";
+import { useNavigate, Navigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Search, MapPin, Star, ChevronRight, Award, ShieldCheck, Sparkles } from "lucide-react";
+import { Search, MapPin, Star, ChevronRight, Award, ShieldCheck, Sparkles, Eye } from "lucide-react";
 import { UruLogo } from "@/components/UruLogo";
 import api from "@/lib/api";
 import { fmt } from "@/lib/format";
@@ -74,14 +74,16 @@ export default function Home() {
   const [gender, setGender] = useState("all");
   const [exp, setExp] = useState("all");
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
+  const preview = new URLSearchParams(location.search).get("preview") === "1";
 
   useEffect(() => { api.get("/providers", { params: { category: "gym" } }).then((r) => setProviders(r.data)); }, []);
   useEffect(() => { api.get("/bookings").then((r) => setHasSub((r.data || []).length > 0)).catch(() => setHasSub(false)); }, []);
 
   const completeQuiz = (a) => { localStorage.setItem("uru_quiz", JSON.stringify(a)); setAnswers(a); };
   const resetQuiz = () => { localStorage.removeItem("uru_quiz"); setAnswers(null); };
-  const showQuiz = !hasSub && !answers;
+  const showQuiz = !preview && !hasSub && !answers;
 
   const genderOpts = useMemo(() => ["all", ...Array.from(new Set(providers.flatMap((p) => p.genders || []))).filter((g) => g && g !== "all")], [providers]);
   const expOpts = useMemo(() => ["all", ...Array.from(new Set(providers.flatMap((p) => p.experience_levels || []))).filter((e) => e && !["all", "All levels", "All"].includes(e))], [providers]);
@@ -102,13 +104,19 @@ export default function Home() {
   const featured = ranked[0];
   const rest = ranked.slice(1);
 
-  // Providers/admins land on their console, not the customer questionnaire home.
-  if (user && (user.provider_status === "approved" || user.role === "admin")) {
+  // Providers/admins land on their console, unless previewing the customer app.
+  if (!preview && user && (user.provider_status === "approved" || user.role === "admin")) {
     return <Navigate to={user.role === "admin" ? "/manage/admin" : "/manage/provider"} replace />;
   }
 
   return (
     <div className="pb-4">
+      {preview && (
+        <div data-testid="customer-preview-banner" className="sticky top-0 z-[60] bg-[#F97316] text-white text-xs font-medium px-4 py-2 flex items-center justify-between">
+          <span className="flex items-center gap-1.5"><Eye className="h-3.5 w-3.5" /> Customer preview</span>
+          <button data-testid="exit-preview-button" onClick={() => navigate(user?.role === "admin" ? "/manage/admin" : "/manage/provider")} className="font-semibold underline underline-offset-2">Exit preview</button>
+        </div>
+      )}
       {/* Header */}
       <div className="bg-[#111827] text-white px-5 pt-6 pb-6 rounded-b-3xl relative overflow-hidden">
         <div className="absolute inset-0 opacity-30" style={{ backgroundImage: `url(${HERO})`, backgroundSize: "cover", backgroundPosition: "center" }} />
