@@ -23,6 +23,9 @@ app = FastAPI()
 api_router = APIRouter(prefix="/api")
 
 ADMIN_EMAILS = {"rrlfnlstrategy@gmail.com", "connect@ubtan.in"}
+# Only these activity categories are visible to customers (gradual rollout).
+# Others stay in admin so they can be enabled later.
+ACTIVE_CATEGORIES = {"gym"}
 EMERGENT_SESSION_URL = "https://demobackend.emergentagent.com/auth/v1/env/oauth/session-data"
 
 DEFAULT_CATEGORIES = [
@@ -71,6 +74,8 @@ class ProviderApply(BaseModel):
     bio: str = ""
     phone: str = ""
     experience_years: int = 0
+    age: int = 0
+    gender: str = ""
     certifications: List[str] = []
     specialties: List[str] = []
     languages: List[str] = []
@@ -82,6 +87,8 @@ class ProviderProfileUpdate(BaseModel):
     bio: str = ""
     phone: str = ""
     experience_years: int = 0
+    age: int = 0
+    gender: str = ""
     certifications: List[str] = []
     specialties: List[str] = []
     languages: List[str] = []
@@ -98,6 +105,7 @@ class SlotConfig(BaseModel):
     time: str
     mode: Literal["physical", "virtual"] = "physical"
     societies: List[str] = []
+    batch_size: int = 10
 
 
 class ServiceCreate(BaseModel):
@@ -109,6 +117,10 @@ class ServiceCreate(BaseModel):
     items: List[ServiceItem] = []
     available_days: List[int] = []
     slots: List[SlotConfig] = []
+    gender: str = "all"
+    age_group: str = "all"
+    experience_level: str = "all"
+    eligibility: str = ""
 
 
 class ItemCreate(BaseModel):
@@ -267,6 +279,8 @@ async def provider_apply(body: ProviderApply, user=Depends(get_current_user)):
         "bio": body.bio,
         "phone": body.phone,
         "experience_years": body.experience_years,
+        "age": body.age,
+        "gender": body.gender,
         "certifications": body.certifications,
         "specialties": body.specialties,
         "languages": body.languages,
@@ -282,6 +296,8 @@ async def update_provider_profile(body: ProviderProfileUpdate, user=Depends(requ
         "bio": body.bio,
         "phone": body.phone,
         "experience_years": body.experience_years,
+        "age": body.age,
+        "gender": body.gender,
         "certifications": body.certifications,
         "specialties": body.specialties,
         "languages": body.languages,
@@ -299,19 +315,27 @@ def _provider_summary(u, svcs):
         "bio": u.get("bio", ""),
         "avatar_url": u.get("avatar_url") or u.get("picture", ""),
         "experience_years": u.get("experience_years", 0),
+        "age": u.get("age", 0),
+        "gender": u.get("gender", ""),
+        "is_verified": bool(u.get("is_verified", False)),
         "certifications": u.get("certifications", []),
         "specialties": u.get("specialties", []),
         "languages": u.get("languages", []),
         "rating": u.get("rating", 4.7),
         "price_from": min(prices) if prices else 0,
         "categories": cats,
+        "genders": sorted({s.get("gender", "all") for s in svcs}),
+        "age_groups": sorted({s.get("age_group", "all") for s in svcs}),
+        "experience_levels": sorted({s.get("experience_level", "all") for s in svcs}),
         "service_count": len(svcs),
     }
 
 
 @api_router.get("/providers")
 async def list_providers(category: Optional[str] = None):
-    query = {"status": "approved", "is_visible": True}
+    if category and category not in ACTIVE_CATEGORIES:
+        return []
+    query = {"status": "approved", "is_visible": True, "category": {"$in": list(ACTIVE_CATEGORIES)}}
     if category:
         query["category"] = category
     services = await db.services.find(query, {"_id": 0}).to_list(2000)
@@ -333,7 +357,9 @@ async def get_provider(provider_id: str):
     u = await db.users.find_one({"user_id": provider_id}, {"_id": 0})
     if not u or u.get("provider_status") != "approved":
         raise HTTPException(status_code=404, detail="Provider not found")
-    svcs = await db.services.find({"provider_id": provider_id, "status": "approved", "is_visible": True}, {"_id": 0}).sort("created_at", -1).to_list(500)
+    svcs = await db.services.find({"provider_id": provider_id, "status": "approved", "is_visible": True, "category": {"$in": list(ACTIVE_CATEGORIES)}}, {"_id": 0}).sort("created_at", -1).to_list(500)
+    if not svcs:
+        raise HTTPException(status_code=404, detail="Provider not found")
     soc_map = {s["id"]: s.get("name", s["id"]) for s in await db.societies.find({}, {"_id": 0}).to_list(500)}
     for s in svcs:
         for slot in s.get("slots", []):
@@ -346,7 +372,9 @@ async def get_provider(provider_id: str):
 # ---------------- Services (public / customer) ----------------
 @api_router.get("/services")
 async def list_services(category: Optional[str] = None):
-    query = {"status": "approved", "is_visible": True}
+    if category and category not in ACTIVE_CATEGORIES:
+        return []
+    query = {"status": "approved", "is_visible": True, "category": {"$in": list(ACTIVE_CATEGORIES)}}
     if category:
         query["category"] = category
     services = await db.services.find(query, {"_id": 0}).to_list(500)
@@ -359,7 +387,7 @@ async def list_services(category: Optional[str] = None):
 @api_router.get("/services/{service_id}")
 async def get_service(service_id: str):
     svc = await db.services.find_one({"id": service_id}, {"_id": 0})
-    if not svc:
+    if not svc or svc.get("category") not in ACTIVE_CATEGORIES:
         raise HTTPException(status_code=404, detail="Service not found")
     return svc
 
@@ -409,6 +437,10 @@ async def create_service(body: ServiceCreate, user=Depends(require_provider)):
         "items": _mk_items(body.items),
         "available_days": body.available_days,
         "slots": [x.model_dump() for x in body.slots],
+        "gender": body.gender,
+        "age_group": body.age_group,
+        "experience_level": body.experience_level,
+        "eligibility": body.eligibility,
         "status": "pending",
         "is_visible": True,
         "created_at": datetime.now(timezone.utc).isoformat(),
@@ -426,6 +458,8 @@ async def update_service(service_id: str, body: ServiceCreate, user=Depends(requ
         "title": body.title, "description": body.description, "category": body.category,
         "image_url": body.image_url, "location": body.location, "items": _mk_items(body.items),
         "available_days": body.available_days, "slots": [x.model_dump() for x in body.slots],
+        "gender": body.gender, "age_group": body.age_group,
+        "experience_level": body.experience_level, "eligibility": body.eligibility,
         "status": "pending",
     }})
     return await db.services.find_one({"id": service_id}, {"_id": 0})
@@ -464,6 +498,108 @@ async def delete_item(service_id: str, item_id: str, user=Depends(require_provid
 async def provider_bookings(user=Depends(require_provider)):
     bookings = await db.bookings.find({"provider_id": user["user_id"]}, {"_id": 0}).sort("created_at", -1).to_list(1000)
     return bookings
+
+
+def _session_progress(b):
+    try:
+        start = datetime.strptime(b.get("start_date") or b.get("date"), "%Y-%m-%d").date()
+        end = datetime.strptime(b.get("end_date"), "%Y-%m-%d").date()
+    except Exception:
+        return {"total": 0, "completed": 0, "due": 0}
+    today = datetime.now(timezone.utc).date()
+    total = max(0, (end - start).days // 7)
+    ref = min(today, end)
+    completed = max(0, (ref - start).days // 7) if ref >= start else 0
+    completed = min(completed, total)
+    return {"total": total, "completed": completed, "due": max(0, total - completed)}
+
+
+@api_router.get("/provider/clients")
+async def provider_clients(service_id: Optional[str] = None, plan: Optional[str] = None, mode: Optional[str] = None, payment_status: Optional[str] = None, user=Depends(require_provider)):
+    q = {"provider_id": user["user_id"], "status": {"$ne": "cancelled"}}
+    if service_id:
+        q["service_id"] = service_id
+    if plan:
+        q["plan"] = plan
+    if mode:
+        q["mode"] = mode
+    if payment_status:
+        q["payment_status"] = payment_status
+    bookings = await db.bookings.find(q, {"_id": 0}).sort("created_at", -1).to_list(2000)
+    out = []
+    for b in bookings:
+        cust = await db.users.find_one({"user_id": b["customer_id"]}, {"_id": 0}) or {}
+        prog = _session_progress(b)
+        pstatus = b.get("payment_status", "pending")
+        out.append({
+            **b,
+            "customer_phone": cust.get("phone", ""),
+            "sessions_total": prog["total"],
+            "sessions_completed": prog["completed"],
+            "sessions_due": prog["due"],
+            "amount_paid": b.get("total", 0) if pstatus == "paid" else 0,
+            "fee_due": 0 if pstatus == "paid" else b.get("total", 0),
+            "payment_status": pstatus,
+        })
+    return out
+
+
+class PaymentUpdate(BaseModel):
+    status: str
+
+
+@api_router.patch("/provider/bookings/{booking_id}/payment")
+async def update_booking_payment(booking_id: str, body: PaymentUpdate, user=Depends(require_provider)):
+    b = await db.bookings.find_one({"id": booking_id, "provider_id": user["user_id"]}, {"_id": 0})
+    if not b:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    status = "paid" if body.status == "paid" else "pending"
+    await db.bookings.update_one({"id": booking_id}, {"$set": {"payment_status": status}})
+    return {"ok": True, "payment_status": status}
+
+
+@api_router.get("/provider/earnings")
+async def provider_earnings(user=Depends(require_provider)):
+    bookings = await db.bookings.find({"provider_id": user["user_id"], "status": {"$ne": "cancelled"}}, {"_id": 0}).to_list(2000)
+    potential = sum(b.get("total", 0) for b in bookings)
+    collected = sum(b.get("total", 0) for b in bookings if b.get("payment_status") == "paid")
+    by_service = {}
+    for b in bookings:
+        row = by_service.setdefault(b.get("service_title", "—"), {"potential": 0, "collected": 0, "clients": 0})
+        row["potential"] += b.get("total", 0)
+        row["clients"] += 1
+        if b.get("payment_status") == "paid":
+            row["collected"] += b.get("total", 0)
+    return {"potential": potential, "collected": collected, "due": potential - collected,
+            "client_count": len(bookings),
+            "by_service": [{"service": k, **v} for k, v in by_service.items()]}
+
+
+@api_router.get("/provider/calendar")
+async def provider_calendar(days: int = 7, user=Depends(require_provider)):
+    bookings = await db.bookings.find({"provider_id": user["user_id"], "status": {"$ne": "cancelled"}}, {"_id": 0}).to_list(2000)
+    today = datetime.now(timezone.utc).date()
+    out = []
+    for i in range(max(1, min(days, 30))):
+        d = today + timedelta(days=i)
+        sessions = 0
+        clients = set()
+        by_service = {}
+        for b in bookings:
+            try:
+                start = datetime.strptime(b.get("start_date") or b.get("date"), "%Y-%m-%d").date()
+                end = datetime.strptime(b.get("end_date"), "%Y-%m-%d").date()
+            except Exception:
+                continue
+            if start <= d <= end and start.weekday() == d.weekday():
+                sessions += 1
+                clients.add(b["customer_id"])
+                t = b.get("service_title", "—")
+                by_service[t] = by_service.get(t, 0) + 1
+        out.append({"date": d.isoformat(), "weekday": d.strftime("%a"), "day": d.day,
+                    "sessions": sessions, "clients": len(clients),
+                    "by_service": [{"service": k, "count": v} for k, v in by_service.items()]})
+    return out
 
 
 # ---------------- Bookings (customer) ----------------
@@ -536,6 +672,8 @@ async def create_booking(body: BookingCreate, user=Depends(get_current_user)):
         "end_date": end_date,
         "address": body.address,
         "notes": body.notes,
+        "payment_status": "pending",
+        "amount_paid": 0,
         "status": "active",
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
@@ -693,7 +831,7 @@ DEMO_PROVIDERS = [
      "phone": "+91 90000 10001", "experience_years": 12,
      "certifications": ["ACE Certified Personal Trainer", "Level 2 Cricket Coach (BCCI)", "AFC 'C' Football Coaching License"],
      "specialties": ["Strength & Conditioning", "Cricket Coaching", "Football Coaching"],
-     "languages": ["English", "Hindi", "Marathi"], "rating": 4.9,
+     "languages": ["English", "Hindi", "Marathi"], "rating": 4.9, "age": 34, "gender": "male", "is_verified": True,
      "avatar_url": "https://images.unsplash.com/photo-1758875568932-0eefd3e60090?crop=entropy&cs=srgb&fm=jpg&q=85&w=400"},
     {"user_id": "user_demoprov_dojo", "email": "dojo@uru.app", "name": "Kenji Sato", "business_name": "Dragon Dojo",
      "bio": "Traditional martial arts and skating coaching rooted in discipline and respect. Certified black-belt instructors train kids and adults in a safe, structured environment.",
@@ -721,7 +859,7 @@ DEMO_PROVIDERS = [
      "phone": "+91 90000 10005", "experience_years": 7,
      "certifications": ["NSCA Certified Strength & Conditioning Specialist", "CrossFit Level 1 Trainer"],
      "specialties": ["CrossFit", "Strength Training", "Football Conditioning"],
-     "languages": ["English", "Hindi", "Punjabi"], "rating": 4.6,
+     "languages": ["English", "Hindi", "Punjabi"], "rating": 4.6, "age": 29, "gender": "male", "is_verified": True,
      "avatar_url": "https://images.unsplash.com/photo-1758875568932-0eefd3e60090?crop=entropy&cs=srgb&fm=jpg&q=85&w=400"},
     {"user_id": "user_demoprov_warrior", "email": "warrior@uru.app", "name": "Rahul Mehta", "business_name": "Warrior Arts Academy",
      "bio": "Modern martial arts and skating for confidence, fitness and focus. Small batches, big results, taught by national-level athletes.",
@@ -813,6 +951,24 @@ async def seed_more_services():
             "is_visible": True,
             "created_at": datetime.now(timezone.utc).isoformat(),
         })
+
+
+async def seed_gym_enrichment():
+    async for svc in db.services.find({"category": "gym"}):
+        updates = {}
+        if "gender" not in svc:
+            updates["gender"] = "all"
+        if "age_group" not in svc:
+            updates["age_group"] = "Adults"
+        if "experience_level" not in svc:
+            updates["experience_level"] = "All levels"
+        if "eligibility" not in svc:
+            updates["eligibility"] = "Open to all fitness levels. Please consult a physician before starting."
+        slots = svc.get("slots") or []
+        if slots and any("batch_size" not in s for s in slots):
+            updates["slots"] = [{**s, "batch_size": s.get("batch_size", 12)} for s in slots]
+        if updates:
+            await db.services.update_one({"id": svc["id"]}, {"$set": updates})
 
 
 async def seed_data():
@@ -916,6 +1072,7 @@ async def on_startup():
     await seed_providers()
     await seed_data()
     await seed_more_services()
+    await seed_gym_enrichment()
 
 
 app.include_router(api_router)

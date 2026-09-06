@@ -7,9 +7,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Store, Plus, Trash2, Layers, X, Video, MapPin } from "lucide-react";
 import { DAY_LABELS, PRESET_SLOTS } from "@/lib/slots";
 
-const emptyService = { title: "", description: "", category: "gym", image_url: "", location: "", available_days: [0, 1, 2, 3, 4, 5, 6], slots: [] };
+const emptyService = { title: "", description: "", category: "gym", image_url: "", location: "", available_days: [0, 1, 2, 3, 4, 5, 6], slots: [], gender: "all", age_group: "all", experience_level: "all", eligibility: "" };
 const emptyItem = { name: "", price: "", duration_min: 60 };
-const emptyDraft = { time: "09:00", mode: "physical", societies: [] };
+const emptyDraft = { time: "09:00", mode: "physical", societies: [], batch_size: 10 };
+
+const GENDER_OPTS = [["all", "Co-ed / Everyone"], ["Male", "Men only"], ["Female", "Women only"]];
+const AGE_OPTS = [["all", "All ages"], ["Kids", "Kids"], ["Teens", "Teens"], ["Adults", "Adults"], ["Seniors", "Seniors"]];
+const EXP_OPTS = [["all", "All levels"], ["Beginner", "Beginner"], ["Intermediate", "Intermediate"], ["Advanced", "Advanced"]];
 
 const Badge = ({ status }) => {
   const map = { approved: "bg-emerald-50 text-emerald-600", pending: "bg-amber-50 text-amber-600", rejected: "bg-red-50 text-red-500" };
@@ -39,7 +43,7 @@ export default function ProviderDashboard() {
 
   const openNew = () => { setSvcForm(emptyService); setItems([]); setItemForm(emptyItem); setDraft(emptyDraft); setEditId(null); setSvcOpen(true); };
   const openEdit = (s) => {
-    setSvcForm({ title: s.title, description: s.description, category: s.category, image_url: s.image_url, location: s.location, available_days: s.available_days || [0, 1, 2, 3, 4, 5, 6], slots: s.slots || [] });
+    setSvcForm({ title: s.title, description: s.description, category: s.category, image_url: s.image_url, location: s.location, available_days: s.available_days || [0, 1, 2, 3, 4, 5, 6], slots: s.slots || [], gender: s.gender || "all", age_group: s.age_group || "all", experience_level: s.experience_level || "all", eligibility: s.eligibility || "" });
     setItems(s.items || []); setItemForm(emptyItem); setDraft(emptyDraft); setEditId(s.id); setSvcOpen(true);
   };
 
@@ -57,7 +61,7 @@ export default function ProviderDashboard() {
   const addSlot = () => {
     if (draft.mode === "physical" && draft.societies.length === 0) return toast.error("Select at least one society for a physical slot");
     if (svcForm.slots.some((s) => s.time === draft.time && s.mode === draft.mode)) return toast.error("This slot already exists");
-    const slot = { time: draft.time, mode: draft.mode, societies: draft.mode === "physical" ? draft.societies : [] };
+    const slot = { time: draft.time, mode: draft.mode, societies: draft.mode === "physical" ? draft.societies : [], batch_size: Number(draft.batch_size) || 10 };
     setSvcForm((f) => ({ ...f, slots: [...f.slots, slot] }));
     setDraft(emptyDraft);
   };
@@ -143,6 +147,22 @@ export default function ProviderDashboard() {
             <input data-testid="service-image-input" className={inputCls} placeholder="Image URL" value={svcForm.image_url} onChange={(e) => setSvcForm({ ...svcForm, image_url: e.target.value })} />
 
             <div className="border border-gray-200 rounded-xl p-3">
+              <p className="text-sm font-semibold text-gray-900 mb-2">Eligibility & audience</p>
+              <div className="grid grid-cols-3 gap-2">
+                <select data-testid="service-gender-select" className={inputCls} value={svcForm.gender} onChange={(e) => setSvcForm({ ...svcForm, gender: e.target.value })}>
+                  {GENDER_OPTS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                </select>
+                <select data-testid="service-age-select" className={inputCls} value={svcForm.age_group} onChange={(e) => setSvcForm({ ...svcForm, age_group: e.target.value })}>
+                  {AGE_OPTS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                </select>
+                <select data-testid="service-exp-select" className={inputCls} value={svcForm.experience_level} onChange={(e) => setSvcForm({ ...svcForm, experience_level: e.target.value })}>
+                  {EXP_OPTS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                </select>
+              </div>
+              <textarea data-testid="service-eligibility-input" className={inputCls + " mt-2"} rows={2} placeholder="Eligibility criteria (e.g. medically fit, no injuries)" value={svcForm.eligibility} onChange={(e) => setSvcForm({ ...svcForm, eligibility: e.target.value })} />
+            </div>
+
+            <div className="border border-gray-200 rounded-xl p-3">
               <p className="text-sm font-semibold text-gray-900 mb-2">Availability</p>
               <p className="text-xs text-gray-500 mb-1.5">Available days</p>
               <div className="flex flex-wrap gap-2">
@@ -166,6 +186,7 @@ export default function ProviderDashboard() {
                       {s.mode === "virtual" ? <Video className="h-4 w-4 text-sky-500" /> : <MapPin className="h-4 w-4 text-[#6D28D9]" />}
                       <b className="text-gray-800">{s.time}</b>
                       <span className="text-xs text-gray-500 capitalize">· {s.mode}</span>
+                      {s.batch_size ? <span className="text-xs text-gray-400">· up to {s.batch_size}</span> : null}
                       {s.mode === "physical" && <span className="text-xs text-gray-400 truncate max-w-[160px]">· {s.societies.map(socName).join(", ")}</span>}
                     </span>
                     <button type="button" data-testid={`remove-slot-${idx}`} onClick={() => removeSlot(idx)} className="text-gray-400 hover:text-red-500"><X className="h-4 w-4" /></button>
@@ -199,6 +220,10 @@ export default function ProviderDashboard() {
                     </div>
                   </div>
                 )}
+                <div className="flex items-center gap-2">
+                  <label className="text-xs text-gray-500 shrink-0">Batch size</label>
+                  <input data-testid="slot-batch-input" type="number" min="1" className={inputCls} value={draft.batch_size} onChange={(e) => setDraft({ ...draft, batch_size: e.target.value })} />
+                </div>
                 <button type="button" data-testid="add-slot-button" onClick={addSlot} className="w-full rounded-xl bg-[#6D28D9]/10 text-[#6D28D9] font-semibold text-sm py-2 flex items-center justify-center gap-1"><Plus className="h-4 w-4" /> Add slot</button>
               </div>
             </div>

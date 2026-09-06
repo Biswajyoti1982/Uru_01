@@ -1,0 +1,39 @@
+{
+  "summary": "Iteration 7 - end-to-end test of gym-only gating + Gym Trainer Phase-1 (enriched profile, service form, provider bookings dashboard). Backend: 18/18 new tests pass (test_gym_gating_and_dashboard.py) covering ACTIVE_CATEGORIES={gym} gating on /api/services & /api/providers, non-gym provider 404, enrichment fields (age/gender/is_verified/rating/experience/certifications/languages), profile PUT persistence, service PUT with gender/age_group/experience_level/eligibility/batch_size persistence, fresh booking creation, /api/provider/clients enrichment, /api/provider/earnings correctness, PATCH /api/provider/bookings/{id}/payment toggle updates collected, /api/provider/calendar returns 14 days, and RBAC guards. Frontend: customer /app shows Gym-focused landing (hero, Most preferred FitZone, All gym trainers list with 2 seeded providers, 'More activities coming soon' strip). Provider public page (/app/provider/user_demoprov_fit) shows verified badge, rating, age+gender ('9+ yrs · male'), About/bio, Certifications, service schedule + Batch size + Eligibility. Successfully completed VIRTUAL booking (17:00 online) and PHYSICAL booking (09:00 Green Valley w/ address) - both appear ACTIVE in /app/plans. Provider console /manage/provider/bookings: 3 tabs work, summary stats correct (Clients 2 / Collected ₹699 after toggle / Due ₹699 / Potential ₹1398), Clients tab shows 12 rows with full customer/program/session/fee data + toggle-payment button that updates Collected in real-time, Calendar tab shows 14 day cards with sessions/clients (Tue 8/Tue 15 each show 2 sess/1 client from Weekly schedule), Earnings tab shows per-program collected vs potential + totals row. Profile edit page has all new testids (profile-age-input, profile-gender-input, etc.) and Save persists to backend (verified via public page).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "Provider Profile form (Profile.jsx)", "issue": "Gender select options use capitalized values ('Male'/'Female'/'Other') but backend stores lowercase ('male'/'female'). Existing gender loaded from /auth/me does not match any option and silently falls back to '' (Prefer not to say). If provider saves without touching Gender, they wipe their stored gender. Backend seeds & Onboard.jsx use lowercase.", "selector": "[data-testid=\"profile-gender-input\"]", "priority": "MEDIUM"},
+      {"component": "ProviderBookings Clients tab", "issue": "Clients list shows ALL bookings including CANCELLED ones (12 cards rendered) while summary Clients stat = 2 (non-cancelled). Cancelled subscribers clutter the list and can confuse the provider. Consider filtering or badging cancelled entries.", "selector": "[data-testid^=\"client-\"]", "priority": "LOW"},
+      {"component": "Customer Home experience-level filter (Home.jsx)", "issue": "Duplicate 'All levels' pill visible in EXPERIENCE LEVEL filter row (a default 'All levels' AND an aggregated 'All levels' when all providers have experience_level='all'). Deduplicate.", "selector": "[data-testid^=\"filter-exp-\"]", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_gym_gating_and_dashboard.py",
+    "/app/test_reports/pytest/iter7.xml"
+  ],
+  "action_items": [
+    "Fix Provider Profile gender select option values: use lowercase 'male'/'female'/'other' to match backend/onboard so preexisting gender is preserved on load and not silently reset on Save.",
+    "Consider filtering cancelled bookings out of the ProviderBookings Clients tab (or visually deemphasize them) to match the summary Clients count.",
+    "Dedupe the 'All levels' pill in customer Home experience-level filter row when aggregated levels only contain 'all'."
+  ],
+  "critical_code_review_comments": [
+    "server.py is 1092 lines - consider splitting into routers (auth, provider, admin, bookings) before it grows further.",
+    "_provider_summary hardcodes fallback rating=4.7 - should be either 0/None or computed from real reviews (currently synthetic).",
+    "create_booking sets status='active' but older client tests still assert status='confirmed' (see backend_test.py test_full_booking_flow - flaky/outdated).",
+    "Frontend Profile.jsx gender option case mismatch is a data loss bug on save.",
+    "Provider /api/provider/profile has only PUT (no dedicated GET) - relies on /auth/me for read; acceptable but inconsistent with REST conventions."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_gym_gating_and_dashboard.py (new)"
+  ],
+  "success_rate": {"backend": "100% (18/18 new tests)", "frontend": "~95% (core flows all pass; 3 minor UI issues noted)"},
+  "test_credentials": "session_token cookie test_session_cust_001 (customer), test_session_prov_001 (provider user_demoprov_fit), test_session_admin_001 (admin)",
+  "seed_data_creation": "Created 2 fresh customer bookings for FitZone Academy (1 virtual 17:00 Tue 8-Sept, 1 physical 09:00 Tue 8-Sept @ Green Valley) as test_session_cust_001. Marked one as paid via provider toggle to verify earnings update, then reverted in the backend test. Frontend bookings remain ACTIVE for main-agent visual verification.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Gym-only gating (ACTIVE_CATEGORIES={gym}) is enforced correctly on /api/services, /api/providers, /api/services/{id}, /api/providers/{id}. Seeded gym providers: user_demoprov_fit, user_demoprov_iron. New provider dashboard endpoints (/provider/clients, /provider/earnings, /provider/calendar, PATCH /provider/bookings/{id}/payment) are functional and RBAC-guarded. Fresh customer bookings for FitZone were created in this run; test_gym_gating_and_dashboard.py cleans up the virtual one but leaves the physical one. Main FE issue is gender select case mismatch in Profile.jsx.",
+  "rca of the issue": "Profile.jsx gender bug RCA: <option value=\"Male\"> etc. use PascalCase while backend/onboard store lowercase. Since <select> value doesn't match any option, React renders as blank (falls back to first option \"\"). Fix: change option values to 'male'/'female'/'other' (labels can stay capitalized) OR normalize case on read/write. Steps to repro: (1) as provider set gender via Onboard or PUT /provider/profile with 'male'; (2) navigate to /manage/provider/profile; (3) observe Gender dropdown shows 'Prefer not to say' instead of 'Male'; (4) click Save without changes -> backend stores gender='' losing the value."
+}

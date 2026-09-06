@@ -1,150 +1,157 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Search, MapPin, Star, ChevronRight, Award } from "lucide-react";
+import { Search, MapPin, Star, ChevronRight, Award, ShieldCheck, Dumbbell, Sparkles } from "lucide-react";
 import api from "@/lib/api";
 import { useCategories } from "@/context/CategoriesContext";
 import { fmt } from "@/lib/format";
 import { useAuth } from "@/context/AuthContext";
 
+const HERO = "https://images.unsplash.com/photo-1648542036561-e1d66a5ae2b1?crop=entropy&cs=srgb&fm=jpg&q=85&w=1200";
+
+const TrainerCard = ({ p, onClick, delay = 0 }) => (
+  <motion.button
+    data-testid={`provider-card-${p.user_id}`}
+    initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay }}
+    onClick={onClick}
+    className="w-full text-left bg-white rounded-3xl overflow-hidden border border-gray-100 shadow-sm active:scale-[0.98] transition-transform p-4 flex gap-4"
+  >
+    <img src={p.avatar_url} alt={p.business_name} className="h-20 w-20 rounded-2xl object-cover shrink-0 bg-gray-100" />
+    <div className="flex-1 min-w-0">
+      <div className="flex items-center gap-1.5">
+        <h3 className="font-display text-base font-bold text-gray-900 truncate">{p.business_name}</h3>
+        {p.is_verified && <ShieldCheck className="h-4 w-4 text-emerald-500 shrink-0" />}
+        <span className="flex items-center gap-0.5 text-xs text-gray-600 ml-auto shrink-0"><Star className="h-3 w-3 fill-amber-400 text-amber-400" /> {p.rating}</span>
+      </div>
+      <p className="text-xs text-gray-500 mt-0.5 flex items-center gap-1"><Award className="h-3 w-3" /> {p.experience_years}+ yrs{p.gender ? ` · ${p.gender.charAt(0).toUpperCase() + p.gender.slice(1)}` : ""}</p>
+      <div className="flex flex-wrap gap-1.5 mt-2">
+        {(p.specialties || []).slice(0, 3).map((s) => (
+          <span key={s} className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-[#F97316]/10 text-[#F97316]">{s}</span>
+        ))}
+      </div>
+      <div className="flex items-center justify-between mt-2.5">
+        <p className="text-sm text-gray-900 font-semibold">From {fmt(p.price_from)}/mo</p>
+        <span className="text-sm font-semibold text-[#F97316] flex items-center">View <ChevronRight className="h-4 w-4" /></span>
+      </div>
+    </div>
+  </motion.button>
+);
+
 export default function Home() {
-  const [services, setServices] = useState([]);
   const [providers, setProviders] = useState([]);
   const [q, setQ] = useState("");
+  const [gender, setGender] = useState("all");
+  const [exp, setExp] = useState("all");
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { categories, catMeta } = useCategories();
+  const { categories } = useCategories();
 
-  useEffect(() => {
-    api.get("/services").then((r) => setServices(r.data));
-    api.get("/providers").then((r) => setProviders(r.data));
-  }, []);
+  useEffect(() => { api.get("/providers", { params: { category: "gym" } }).then((r) => setProviders(r.data)); }, []);
+
+  const genderOpts = useMemo(() => ["all", ...Array.from(new Set(providers.flatMap((p) => p.genders || []))).filter((g) => g && g !== "all")], [providers]);
+  const expOpts = useMemo(() => ["all", ...Array.from(new Set(providers.flatMap((p) => p.experience_levels || []))).filter((e) => e && !["all", "All levels", "All"].includes(e))], [providers]);
 
   const ql = q.toLowerCase();
-  const minPrice = (s) => (s.items?.length ? Math.min(...s.items.map((i) => i.price)) : 0);
-  const svcFiltered = services.filter((s) => s.title.toLowerCase().includes(ql) || (s.provider_name || "").toLowerCase().includes(ql));
-  const provFiltered = providers.filter(
-    (p) => p.business_name.toLowerCase().includes(ql) || (p.specialties || []).some((s) => s.toLowerCase().includes(ql))
-  );
+  const filtered = providers.filter((p) => {
+    const matchesQ = p.business_name.toLowerCase().includes(ql) || (p.specialties || []).some((s) => s.toLowerCase().includes(ql));
+    const matchesG = gender === "all" || (p.genders || []).includes(gender);
+    const matchesE = exp === "all" || (p.experience_levels || []).includes(exp);
+    return matchesQ && matchesG && matchesE;
+  });
+
+  const featured = filtered[0];
+  const rest = filtered.slice(1);
+  const comingSoon = categories.filter((c) => c.id !== "gym");
 
   return (
-    <div>
+    <div className="pb-4">
       {/* Header */}
-      <div className="bg-[#6D28D9] text-white px-5 pt-6 pb-6 rounded-b-3xl">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-[11px] text-white/70 flex items-center gap-1"><MapPin className="h-3 w-3" /> Deliver to</p>
-            <p className="text-sm font-semibold">Mumbai, India</p>
+      <div className="bg-[#111827] text-white px-5 pt-6 pb-6 rounded-b-3xl relative overflow-hidden">
+        <div className="absolute inset-0 opacity-30" style={{ backgroundImage: `url(${HERO})`, backgroundSize: "cover", backgroundPosition: "center" }} />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#111827] via-[#111827]/70 to-[#111827]/30" />
+        <div className="relative">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-[11px] text-white/60 flex items-center gap-1"><MapPin className="h-3 w-3" /> Mumbai, India</p>
+              <p className="text-sm font-semibold flex items-center gap-1.5"><Dumbbell className="h-4 w-4 text-[#F97316]" /> URU Gym Trainers</p>
+            </div>
+            <button data-testid="home-avatar" onClick={() => navigate("/app/account")} className="h-10 w-10 rounded-full bg-white/15 flex items-center justify-center font-semibold active:scale-95 transition-transform">
+              {user?.name?.[0]?.toUpperCase() || "U"}
+            </button>
           </div>
-          <button data-testid="home-avatar" onClick={() => navigate("/app/account")} className="h-10 w-10 rounded-full bg-white/20 flex items-center justify-center font-semibold active:scale-95 transition-transform">
-            {user?.name?.[0]?.toUpperCase() || "U"}
-          </button>
-        </div>
-        <h1 className="font-display text-2xl font-bold mt-4 leading-snug">
-          Hi {user?.name?.split(" ")[0] || "there"}, what would you like to learn today?
-        </h1>
-        <div className="mt-4 bg-white rounded-2xl flex items-center gap-2 px-4 h-12">
-          <Search className="h-4 w-4 text-gray-400" />
-          <input data-testid="home-search-input" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search classes, coaches, karate…" className="flex-1 text-sm text-gray-800 placeholder:text-gray-400 outline-none bg-transparent" />
+          <h1 className="font-display text-3xl font-bold mt-6 leading-tight max-w-[85%]">
+            Find your perfect <span className="text-[#F97316]">gym trainer</span>
+          </h1>
+          <p className="text-sm text-white/70 mt-1.5">Certified coaches near you. Subscribe monthly, train your way.</p>
+          <div className="mt-4 bg-white rounded-2xl flex items-center gap-2 px-4 h-12">
+            <Search className="h-4 w-4 text-gray-400" />
+            <input data-testid="home-search-input" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search trainers, specialties…" className="flex-1 text-sm text-gray-800 placeholder:text-gray-400 outline-none bg-transparent" />
+          </div>
         </div>
       </div>
 
-      {/* Categories — tap to see providers for that activity */}
-      <div className="px-5 mt-6">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="font-display text-lg font-bold text-gray-900">Activities</h2>
-        </div>
-        <div className="grid grid-cols-4 gap-3">
-          {categories.map((c) => (
-            <button key={c.id} data-testid={`category-${c.id}`} onClick={() => navigate(`/app/providers?category=${c.id}`)} className="flex flex-col items-center gap-1.5 active:scale-95 transition-transform">
-              <div className="h-14 w-14 rounded-2xl flex items-center justify-center border border-transparent" style={{ background: `${c.color}18` }}>
-                <c.icon className="h-6 w-6" style={{ color: c.color }} />
-              </div>
-              <span className="text-[10px] text-gray-600 font-medium text-center leading-tight">{c.label}</span>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Popular classes — tap opens providers offering that activity */}
-      <div className="mt-7">
-        <div className="flex items-center justify-between mb-3 px-5">
-          <h2 className="font-display text-lg font-bold text-gray-900">Popular classes</h2>
-          {svcFiltered.length > 0 && (
-            <button data-testid="see-all-classes" onClick={() => navigate("/app/classes")} className="text-xs font-semibold text-[#6D28D9] flex items-center">
-              See all <ChevronRight className="h-4 w-4" />
-            </button>
-          )}
-        </div>
-        {svcFiltered.length === 0 ? (
-          <p className="text-sm text-gray-400 px-5 py-4">No classes found.</p>
-        ) : (
-          <div className="flex gap-4 overflow-x-auto px-5 pb-2 no-scrollbar">
-            {svcFiltered.map((s, i) => (
-              <motion.button
-                key={s.id}
-                data-testid={`service-card-${s.id}`}
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.05 }}
-                onClick={() => navigate(`/app/providers?category=${s.category}`)}
-                className="text-left bg-white rounded-3xl overflow-hidden border border-gray-100 shadow-sm active:scale-[0.98] transition-transform shrink-0 w-[240px]"
-              >
-                <div className="h-28 w-full overflow-hidden bg-gray-100">
-                  <img src={s.image_url} alt={s.title} className="h-full w-full object-cover" />
-                </div>
-                <div className="p-3">
-                  <span className="text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full" style={{ background: `${catMeta(s.category).color}18`, color: catMeta(s.category).color }}>
-                    {catMeta(s.category).label}
-                  </span>
-                  <h3 className="font-display text-base font-bold text-gray-900 mt-1.5 truncate">{s.title}</h3>
-                  <p className="text-xs text-gray-500 mt-0.5 truncate">{s.provider_name}</p>
-                  <p className="text-sm text-gray-900 font-semibold mt-1.5">From {fmt(minPrice(s))}/mo</p>
-                </div>
-              </motion.button>
-            ))}
+      {/* Filters */}
+      <div className="px-5 mt-5 space-y-3">
+        {genderOpts.length > 1 && (
+          <div>
+            <p className="text-[11px] uppercase tracking-wide text-gray-400 font-semibold mb-1.5">For</p>
+            <div className="flex gap-2 flex-wrap">
+              {genderOpts.map((g) => (
+                <button key={g} data-testid={`filter-gender-${g}`} onClick={() => setGender(g)} className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${gender === g ? "bg-[#F97316] text-white border-[#F97316]" : "border-gray-200 text-gray-600"}`}>{g === "all" ? "Everyone" : g}</button>
+              ))}
+            </div>
+          </div>
+        )}
+        {expOpts.length > 1 && (
+          <div>
+            <p className="text-[11px] uppercase tracking-wide text-gray-400 font-semibold mb-1.5">Experience level</p>
+            <div className="flex gap-2 flex-wrap">
+              {expOpts.map((e) => (
+                <button key={e} data-testid={`filter-exp-${e}`} onClick={() => setExp(e)} className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${exp === e ? "bg-[#F97316] text-white border-[#F97316]" : "border-gray-200 text-gray-600"}`}>{e === "all" ? "All levels" : e}</button>
+              ))}
+            </div>
           </div>
         )}
       </div>
 
-      {/* Top providers */}
-      <div className="px-5 mt-7">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="font-display text-lg font-bold text-gray-900">Top providers near you</h2>
+      {/* Featured */}
+      {featured && (
+        <div className="px-5 mt-6">
+          <div className="flex items-center gap-2 mb-3">
+            <Sparkles className="h-4 w-4 text-[#F97316]" />
+            <h2 className="font-display text-lg font-bold text-gray-900">Most preferred</h2>
+          </div>
+          <TrainerCard p={featured} onClick={() => navigate(`/app/provider/${featured.user_id}`)} />
         </div>
+      )}
+
+      {/* All trainers */}
+      <div className="px-5 mt-6">
+        <h2 className="font-display text-lg font-bold text-gray-900 mb-3">All gym trainers</h2>
         <div className="space-y-4">
-          {provFiltered.length === 0 && <p className="text-sm text-gray-400 py-8 text-center">No providers found.</p>}
-          {provFiltered.map((p, i) => (
-            <motion.button
-              key={p.user_id}
-              data-testid={`provider-card-${p.user_id}`}
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.05 }}
-              onClick={() => navigate(`/app/provider/${p.user_id}`)}
-              className="w-full text-left bg-white rounded-3xl overflow-hidden border border-gray-100 shadow-sm active:scale-[0.98] transition-transform p-4 flex gap-4"
-            >
-              <img src={p.avatar_url} alt={p.business_name} className="h-20 w-20 rounded-2xl object-cover shrink-0 bg-gray-100" />
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <h3 className="font-display text-base font-bold text-gray-900 truncate">{p.business_name}</h3>
-                  <span className="flex items-center gap-0.5 text-xs text-gray-600 ml-auto shrink-0"><Star className="h-3 w-3 fill-amber-400 text-amber-400" /> {p.rating}</span>
-                </div>
-                <p className="text-xs text-gray-500 mt-0.5 flex items-center gap-1"><Award className="h-3 w-3" /> {p.experience_years}+ yrs experience</p>
-                <div className="flex flex-wrap gap-1.5 mt-2">
-                  {(p.specialties || []).slice(0, 3).map((s) => (
-                    <span key={s} className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-[#6D28D9]/8 text-[#6D28D9]">{s}</span>
-                  ))}
-                </div>
-                <div className="flex items-center justify-between mt-2.5">
-                  <p className="text-sm text-gray-900 font-semibold">From {fmt(p.price_from)}/mo</p>
-                  <span className="text-sm font-semibold text-[#6D28D9] flex items-center">View <ChevronRight className="h-4 w-4" /></span>
-                </div>
-              </div>
-            </motion.button>
+          {filtered.length === 0 && <p className="text-sm text-gray-400 py-8 text-center">No trainers match your filters.</p>}
+          {rest.map((p, i) => (
+            <TrainerCard key={p.user_id} p={p} delay={i * 0.05} onClick={() => navigate(`/app/provider/${p.user_id}`)} />
           ))}
         </div>
       </div>
+
+      {/* Coming soon */}
+      {comingSoon.length > 0 && (
+        <div className="px-5 mt-8">
+          <div className="rounded-3xl border border-dashed border-gray-200 bg-white p-5">
+            <h3 className="font-display text-base font-bold text-gray-900">More activities coming soon</h3>
+            <p className="text-xs text-gray-500 mt-1">We're starting with gym trainers. Next up:</p>
+            <div className="flex flex-wrap gap-2 mt-3">
+              {comingSoon.map((c) => (
+                <span key={c.id} className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full bg-gray-100 text-gray-500">
+                  <c.icon className="h-3.5 w-3.5" style={{ color: c.color }} /> {c.label}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

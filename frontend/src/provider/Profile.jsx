@@ -18,6 +18,8 @@ export default function ProviderProfile() {
       phone: user.phone || "",
       bio: user.bio || "",
       experience_years: user.experience_years || 0,
+      age: user.age || 0,
+      gender: (user.gender || "").toLowerCase(),
       avatar_url: user.avatar_url || user.picture || "",
       certifications: (user.certifications || []).join(", "),
       specialties: (user.specialties || []).join(", "),
@@ -37,6 +39,8 @@ export default function ProviderProfile() {
         phone: form.phone,
         bio: form.bio,
         experience_years: Number(form.experience_years) || 0,
+        age: Number(form.age) || 0,
+        gender: form.gender,
         avatar_url: form.avatar_url,
         certifications: toArr(form.certifications),
         specialties: toArr(form.specialties),
@@ -83,6 +87,21 @@ export default function ProviderProfile() {
           <div>
             <label className="text-xs font-medium text-gray-500 mb-1.5 block">Phone</label>
             <input data-testid="profile-phone-input" className={inputCls} value={form.phone} onChange={set("phone")} />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="text-xs font-medium text-gray-500 mb-1.5 block">Age</label>
+              <input data-testid="profile-age-input" type="number" min="0" className={inputCls} value={form.age} onChange={set("age")} />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-gray-500 mb-1.5 block">Gender</label>
+              <select data-testid="profile-gender-input" className={inputCls} value={form.gender} onChange={set("gender")}>
+                <option value="">Prefer not to say</option>
+                <option value="male">Male</option>
+                <option value="female">Female</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
           </div>
           <div>
             <label className="text-xs font-medium text-gray-500 mb-1.5 block">About / bio</label>

@@ -10,7 +10,7 @@ const toArr = (str) => str.split(",").map((s) => s.trim()).filter(Boolean);
 export default function Onboard() {
   const { checkAuth } = useAuth();
   const navigate = useNavigate();
-  const [form, setForm] = useState({ business_name: "", bio: "", phone: "", experience_years: "", certifications: "", specialties: "", languages: "", avatar_url: "" });
+  const [form, setForm] = useState({ business_name: "", bio: "", phone: "", experience_years: "", age: "", gender: "", certifications: "", specialties: "", languages: "", avatar_url: "" });
   const [busy, setBusy] = useState(false);
 
   const submit = async (e) => {
@@ -23,6 +23,8 @@ export default function Onboard() {
         bio: form.bio,
         phone: form.phone,
         experience_years: Number(form.experience_years) || 0,
+        age: Number(form.age) || 0,
+        gender: form.gender,
         avatar_url: form.avatar_url,
         certifications: toArr(form.certifications),
         specialties: toArr(form.specialties),
@@ -66,6 +68,21 @@ export default function Onboard() {
           <div>
             <label className="text-xs font-medium text-gray-500 mb-1.5 block">Phone</label>
             <input data-testid="onboard-phone" className={inputCls} placeholder="+91 90000 00000" value={form.phone} onChange={set("phone")} />
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="text-xs font-medium text-gray-500 mb-1.5 block">Age</label>
+            <input data-testid="onboard-age" type="number" min="0" className={inputCls} placeholder="e.g. 30" value={form.age} onChange={set("age")} />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-gray-500 mb-1.5 block">Gender</label>
+            <select data-testid="onboard-gender" className={inputCls} value={form.gender} onChange={set("gender")}>
+              <option value="">Prefer not to say</option>
+              <option value="male">Male</option>
+              <option value="female">Female</option>
+              <option value="other">Other</option>
+            </select>
           </div>
         </div>
         <div>

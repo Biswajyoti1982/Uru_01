@@ -68,6 +68,15 @@ Build an app where users subscribe to classes for different activities (gym trai
 - Backend validates booking date/slot against the service's availability (400 otherwise). Verified via curl (bad slot→400, good→200) and UI (restricted service shows Mon/Wed/Fri + 3 slots).
 
 
+## Iteration 9 (2026-06) — Gym-only launch + Gym Trainer Phase 1
+- **Single active service:** hardcoded `ACTIVE_CATEGORIES={"gym"}`. Customers only see Gym everywhere (`/api/services`, `/api/providers`, `/api/providers/{id}`, `/api/services/{id}` gated; non-gym provider → 404). Other categories/providers stay in admin for later rollout.
+- **Home restructured** into a Gym Trainer landing: dark hero, "Most preferred" trainer, "All gym trainers" list, gender/experience filters (auto-shown when data exists), and a "More activities coming soon" strip.
+- **Enriched trainer profile:** users now store `age, gender, is_verified` (+ existing experience/certifications/languages/rating). Verified badge shown; gender stored lowercase, displayed capitalized. Editable in provider **My Profile** + onboarding.
+- **Service details:** `SlotConfig.batch_size`; service `gender/age_group/experience_level/eligibility`. Shown on provider page (schedule, batch size, eligibility, audience badges) and editable in the service form.
+- **Provider Bookings dashboard** (`/manage/provider/bookings`) with 3 tabs: **Clients** (contact, program+plan+slot, sessions done/total/due, fee + mark paid/pending toggle), **Calendar** (next 14 days, day-wise sessions & clients), **Earnings** (per-program collected vs potential + totals). New endpoints: `/provider/clients`, `PATCH /provider/bookings/{id}/payment`, `/provider/earnings`, `/provider/calendar`. Cancelled bookings excluded from clients/earnings.
+- Verified: testing_agent iteration_7 — backend 18/18, frontend core flows pass; 3 minor UI issues fixed (gender case data-loss, cancelled clutter, dup exp pill).
+- **Deferred (per user):** Phase 2 Promotion Engine; Phase 3 Value-added Services (session builder, rep/time tracker, calorie calc, body-KPI trends, progress tracker, food intake, self-practice & assessments).
+
 ## Iteration 8 (2026-06) — Activity → providers list + Home discovery
 - **Home (post-login)** now shows: Activities grid → **Popular classes** (horizontal, ranked by real active-subscriber count via `GET /api/services`) with a **See all** link (`/app/classes`) → **Top providers**.
 - **Activity/class click → providers list**: tapping an activity icon or a class card opens `/app/providers?category=<cat>` listing ALL providers offering that activity; tapping a specific provider card opens their page to book.
