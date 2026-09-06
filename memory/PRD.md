@@ -101,6 +101,11 @@ Build an app where users subscribe to classes for different activities (gym trai
 - Legacy seeded services (string slots) cleared & re-seeded in object format.
 - Verified: testing_agent iteration_3 — backend 11/11 new tests, frontend 6/6 flows, no regressions.
 
+## Iteration 10 (2026-06) — Unified black theme across consoles
+- Admin & Provider consoles restyled from the old light/purple (#6D28D9) look to the app's **black/orange** aesthetic (page `#0B0F17`, surfaces `#151A24`/`#0F1420`, borders `white/10`, accent `#F97316`) matching the customer dark hero, splash and login.
+- Files: `ManageLayout.jsx`, `admin/{Overview,Providers,Services,Categories,Societies}.jsx`, `provider/{Overview,Dashboard,Profile,ProviderBookings,Onboard}.jsx`. Provider service dialog now renders as a dark modal. Status badges shifted to dark tints (emerald/amber/red -400). All data-testids & logic preserved (CSS-only change).
+- Verified visually via screenshots (admin overview + services table, provider home + services dialog) with data loading correctly.
+
 ## Backlog (P1/P2)
 - P1: Admin can pin/highlight activities/providers in a top strip on the Home feed.
 - P2: Customer pause-subscription (holidays); real ratings from completed bookings (currently a seeded field); email renewal reminders (Resend).

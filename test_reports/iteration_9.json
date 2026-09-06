@@ -1,0 +1,23 @@
+{
+  "summary": "Frontend-only verification of role-based redirect from /app for provider/admin/customer. All 4 scenarios pass: (1) approved provider (test_session_biswa_001) at /app redirects to /manage/provider and renders Overview with all 5 sections + Edit buttons (ov-profile[-edit], ov-specialties[-edit], ov-certs[-edit], ov-services[-edit], ov-schedule[-edit]); questionnaire NOT rendered. (2) admin (test_session_admin_001) at /app redirects to /manage/admin; questionnaire NOT rendered. (3) customer no-sub (test_session_nosub_001) at /app stays on /app and questionnaire IS rendered. (4) /manage index redirects to /manage/provider and nav-provider-home is present as first provider link and active.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Home.jsx: redirect executes after two useEffect API calls fire (/providers, /bookings). Providers/admins still trigger these customer-only calls before redirect; consider gating the effects on the role check to avoid needless requests and 405/permission noise in console.",
+    "Observed repeated 405 responses in console during navigation (not caused by this fix, but worth investigating — likely a customer-scoped endpoint hit while on provider/admin session)."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A", "frontend": "100%"},
+  "test_credentials": "Cookie session_token: provider=test_session_biswa_001, admin=test_session_admin_001, customer-nosub=test_session_nosub_001",
+  "seed_data_creation": "None",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Redirect fix verified end-to-end via Playwright with cookie-based sessions. Overview page renders all 5 sections/edit buttons for approved provider. Customer without subscription still shows questionnaire on /app.",
+  "rca of the issue": "Prior behavior rendered <Home/> for every /app visit including providers; provider users landed on customer questionnaire. Fix adds a post-hooks Navigate guard in Home.jsx based on user.provider_status/role, routing approved providers to /manage/provider and admins to /manage/admin. Verified working."
+}

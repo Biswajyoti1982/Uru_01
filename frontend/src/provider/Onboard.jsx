@@ -38,45 +38,45 @@ export default function Onboard() {
     } finally { setBusy(false); }
   };
 
-  const inputCls = "w-full text-sm text-gray-800 placeholder:text-gray-400 outline-none border border-gray-200 rounded-xl px-4 py-3 focus:border-[#6D28D9]";
+  const inputCls = "w-full text-sm text-white placeholder:text-gray-500 outline-none border border-white/10 bg-white/5 rounded-xl px-4 py-3 focus:border-[#F97316]";
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="bg-white px-5 py-4 flex items-center gap-3 border-b border-gray-100 sticky top-0 z-30">
-        <button data-testid="onboard-back" onClick={() => navigate(-1)}><ArrowLeft className="h-5 w-5 text-gray-700" /></button>
-        <h1 className="font-display text-lg font-bold text-gray-900">Become a provider</h1>
+    <div className="min-h-screen bg-[#0B0F17] text-white">
+      <div className="bg-[#0F1420] px-5 py-4 flex items-center gap-3 border-b border-white/10 sticky top-0 z-30">
+        <button data-testid="onboard-back" onClick={() => navigate(-1)}><ArrowLeft className="h-5 w-5 text-gray-300" /></button>
+        <h1 className="font-display text-lg font-bold text-white">Become a provider</h1>
       </div>
       <form onSubmit={submit} className="px-5 mt-5 space-y-4 pb-10">
-        <div className="bg-[#6D28D9]/8 border border-[#6D28D9]/20 rounded-2xl p-4 flex items-center gap-3">
-          <div className="h-9 w-9 rounded-xl bg-[#6D28D9] flex items-center justify-center"><BadgePlus className="h-4 w-4 text-white" /></div>
-          <p className="text-xs text-gray-600">List your classes on URU. An admin reviews your details before you go live.</p>
+        <div className="bg-[#F97316]/10 border border-[#F97316]/20 rounded-2xl p-4 flex items-center gap-3">
+          <div className="h-9 w-9 rounded-xl bg-[#F97316] flex items-center justify-center"><BadgePlus className="h-4 w-4 text-white" /></div>
+          <p className="text-xs text-gray-400">List your classes on URU. An admin reviews your details before you go live.</p>
         </div>
         <div>
-          <label className="text-xs font-medium text-gray-500 mb-1.5 block">Business / Coach name *</label>
+          <label className="text-xs font-medium text-gray-400 mb-1.5 block">Business / Coach name *</label>
           <input data-testid="onboard-business-name" className={inputCls} placeholder="e.g. FitZone Academy" value={form.business_name} onChange={set("business_name")} />
         </div>
         <div>
-          <label className="text-xs font-medium text-gray-500 mb-1.5 block">Bio</label>
+          <label className="text-xs font-medium text-gray-400 mb-1.5 block">Bio</label>
           <textarea data-testid="onboard-bio" rows={3} className={inputCls} placeholder="What do you offer?" value={form.bio} onChange={set("bio")} />
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="text-xs font-medium text-gray-500 mb-1.5 block">Experience (years)</label>
+            <label className="text-xs font-medium text-gray-400 mb-1.5 block">Experience (years)</label>
             <input data-testid="onboard-experience" type="number" min="0" className={inputCls} placeholder="e.g. 8" value={form.experience_years} onChange={set("experience_years")} />
           </div>
           <div>
-            <label className="text-xs font-medium text-gray-500 mb-1.5 block">Phone</label>
+            <label className="text-xs font-medium text-gray-400 mb-1.5 block">Phone</label>
             <input data-testid="onboard-phone" className={inputCls} placeholder="+91 90000 00000" value={form.phone} onChange={set("phone")} />
           </div>
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="text-xs font-medium text-gray-500 mb-1.5 block">Age</label>
+            <label className="text-xs font-medium text-gray-400 mb-1.5 block">Age</label>
             <input data-testid="onboard-age" type="number" min="0" className={inputCls} placeholder="e.g. 30" value={form.age} onChange={set("age")} />
           </div>
           <div>
-            <label className="text-xs font-medium text-gray-500 mb-1.5 block">Gender</label>
+            <label className="text-xs font-medium text-gray-400 mb-1.5 block">Gender</label>
             <select data-testid="onboard-gender" className={inputCls} value={form.gender} onChange={set("gender")}>
               <option value="">Prefer not to say</option>
               <option value="male">Male</option>
@@ -86,22 +86,22 @@ export default function Onboard() {
           </div>
         </div>
         <div>
-          <label className="text-xs font-medium text-gray-500 mb-1.5 block">Certifications / qualifications <span className="text-gray-400">(comma separated)</span></label>
+          <label className="text-xs font-medium text-gray-400 mb-1.5 block">Certifications / qualifications <span className="text-gray-400">(comma separated)</span></label>
           <input data-testid="onboard-certifications" className={inputCls} placeholder="e.g. ACE Certified, B.Ed" value={form.certifications} onChange={set("certifications")} />
         </div>
         <div>
-          <label className="text-xs font-medium text-gray-500 mb-1.5 block">Specialties / trainings <span className="text-gray-400">(comma separated)</span></label>
+          <label className="text-xs font-medium text-gray-400 mb-1.5 block">Specialties / trainings <span className="text-gray-400">(comma separated)</span></label>
           <input data-testid="onboard-specialties" className={inputCls} placeholder="e.g. Strength Training, Cricket" value={form.specialties} onChange={set("specialties")} />
         </div>
         <div>
-          <label className="text-xs font-medium text-gray-500 mb-1.5 block">Languages <span className="text-gray-400">(comma separated)</span></label>
+          <label className="text-xs font-medium text-gray-400 mb-1.5 block">Languages <span className="text-gray-400">(comma separated)</span></label>
           <input data-testid="onboard-languages" className={inputCls} placeholder="e.g. English, Hindi" value={form.languages} onChange={set("languages")} />
         </div>
         <div>
-          <label className="text-xs font-medium text-gray-500 mb-1.5 block">Profile photo URL</label>
+          <label className="text-xs font-medium text-gray-400 mb-1.5 block">Profile photo URL</label>
           <input data-testid="onboard-avatar" className={inputCls} placeholder="https://…" value={form.avatar_url} onChange={set("avatar_url")} />
         </div>
-        <button data-testid="onboard-submit" disabled={busy} className="w-full h-12 rounded-full bg-[#6D28D9] text-white font-semibold disabled:opacity-50 active:scale-95 transition-transform">
+        <button data-testid="onboard-submit" disabled={busy} className="w-full h-12 rounded-full bg-[#F97316] text-white font-semibold disabled:opacity-50 active:scale-95 transition-transform">
           {busy ? "Submitting…" : "Submit application"}
         </button>
       </form>

@@ -12,7 +12,7 @@ const Item = ({ to, icon: Icon, label, testid, end, onClick }) => (
     onClick={onClick}
     className={({ isActive }) =>
       `flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors ${
-        isActive ? "bg-[#6D28D9] text-white" : "text-gray-600 hover:bg-gray-100"
+        isActive ? "bg-[#F97316] text-white" : "text-gray-400 hover:bg-white/5 hover:text-white"
       }`
     }
   >
@@ -33,34 +33,34 @@ export default function ManageLayout() {
   const close = () => setOpen(false);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#0B0F17] text-white">
       {/* Mobile top bar */}
-      <div className="lg:hidden sticky top-0 z-30 bg-white border-b border-gray-200 h-14 flex items-center gap-3 px-4">
-        <button data-testid="menu-open-button" onClick={() => setOpen(true)} className="h-9 w-9 rounded-lg flex items-center justify-center hover:bg-gray-100 active:scale-95 transition-transform">
-          <Menu className="h-5 w-5 text-gray-700" />
+      <div className="lg:hidden sticky top-0 z-30 bg-[#0F1420] border-b border-white/10 h-14 flex items-center gap-3 px-4">
+        <button data-testid="menu-open-button" onClick={() => setOpen(true)} className="h-9 w-9 rounded-lg flex items-center justify-center hover:bg-white/10 active:scale-95 transition-transform">
+          <Menu className="h-5 w-5 text-gray-300" />
         </button>
         <div className="flex items-center gap-2">
           <UruLogo size={28} />
-          <span className="font-display text-lg font-bold">URU <span className="text-gray-400 font-medium text-xs">Console</span></span>
+          <span className="font-display text-lg font-bold text-white">URU <span className="text-gray-500 font-medium text-xs">Console</span></span>
         </div>
       </div>
 
       {/* Backdrop (mobile) */}
-      {open && <div data-testid="menu-backdrop" onClick={close} className="fixed inset-0 bg-black/40 z-40 lg:hidden" />}
+      {open && <div data-testid="menu-backdrop" onClick={close} className="fixed inset-0 bg-black/60 z-40 lg:hidden" />}
 
       {/* Sidebar */}
-      <aside className={`fixed top-0 left-0 h-screen w-64 bg-white border-r border-gray-200 flex flex-col z-50 transform transition-transform duration-200 lg:translate-x-0 ${open ? "translate-x-0" : "-translate-x-full"}`}>
-        <div className="h-16 flex items-center gap-2 px-6 border-b border-gray-100">
+      <aside className={`fixed top-0 left-0 h-screen w-64 bg-[#0F1420] border-r border-white/10 flex flex-col z-50 transform transition-transform duration-200 lg:translate-x-0 ${open ? "translate-x-0" : "-translate-x-full"}`}>
+        <div className="h-16 flex items-center gap-2 px-6 border-b border-white/10">
           <UruLogo size={32} />
-          <span className="font-display text-xl font-bold">URU <span className="text-gray-400 font-medium text-sm">Console</span></span>
-          <button data-testid="menu-close-button" onClick={close} className="lg:hidden ml-auto h-8 w-8 rounded-lg flex items-center justify-center hover:bg-gray-100">
-            <X className="h-4 w-4 text-gray-500" />
+          <span className="font-display text-xl font-bold text-white">URU <span className="text-gray-500 font-medium text-sm">Console</span></span>
+          <button data-testid="menu-close-button" onClick={close} className="lg:hidden ml-auto h-8 w-8 rounded-lg flex items-center justify-center hover:bg-white/10">
+            <X className="h-4 w-4 text-gray-400" />
           </button>
         </div>
         <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
           {isProvider && (
             <>
-              <p className="px-4 pt-2 pb-1 text-[10px] uppercase tracking-widest text-gray-400 font-semibold">Provider</p>
+              <p className="px-4 pt-2 pb-1 text-[10px] uppercase tracking-widest text-gray-500 font-semibold">Provider</p>
               <Item to="/manage/provider" end icon={LayoutDashboard} label="Home" testid="nav-provider-home" onClick={close} />
               <Item to="/manage/provider/services" icon={Store} label="My Services" testid="nav-provider-services" onClick={close} />
               <Item to="/manage/provider/profile" icon={UserCog} label="My Profile" testid="nav-provider-profile" onClick={close} />
@@ -69,7 +69,7 @@ export default function ManageLayout() {
           )}
           {isAdmin && (
             <>
-              <p className="px-4 pt-3 pb-1 text-[10px] uppercase tracking-widest text-gray-400 font-semibold">Admin</p>
+              <p className="px-4 pt-3 pb-1 text-[10px] uppercase tracking-widest text-gray-500 font-semibold">Admin</p>
               <Item to="/manage/admin" icon={LayoutDashboard} label="Overview" testid="nav-admin-overview" end onClick={close} />
               <Item to="/manage/admin/providers" icon={Users} label="Providers" testid="nav-admin-providers" onClick={close} />
               <Item to="/manage/admin/services" icon={ShieldCheck} label="Services" testid="nav-admin-services" onClick={close} />
@@ -78,11 +78,11 @@ export default function ManageLayout() {
             </>
           )}
         </nav>
-        <div className="p-3 border-t border-gray-100">
+        <div className="p-3 border-t border-white/10">
           <button
             data-testid="back-to-app-button"
             onClick={() => navigate("/app")}
-            className="w-full flex items-center justify-center gap-2 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-100 py-2.5 text-sm font-medium transition-colors"
+            className="w-full flex items-center justify-center gap-2 rounded-xl border border-white/10 text-gray-400 hover:bg-white/5 hover:text-white py-2.5 text-sm font-medium transition-colors"
           >
             <ArrowLeft className="h-4 w-4" /> Back to app
           </button>

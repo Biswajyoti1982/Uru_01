@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Navigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Search, MapPin, Star, ChevronRight, Award, ShieldCheck, Sparkles } from "lucide-react";
 import { UruLogo } from "@/components/UruLogo";
@@ -101,6 +101,11 @@ export default function Home() {
 
   const featured = ranked[0];
   const rest = ranked.slice(1);
+
+  // Providers/admins land on their console, not the customer questionnaire home.
+  if (user && (user.provider_status === "approved" || user.role === "admin")) {
+    return <Navigate to={user.role === "admin" ? "/manage/admin" : "/manage/provider"} replace />;
+  }
 
   return (
     <div className="pb-4">

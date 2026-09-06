@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { toast } from "sonner";
 import api from "@/lib/api";
 import { fmt, fmtDate } from "@/lib/format";
-import { Users, IndianRupee, TrendingUp, CalendarDays, Mail, Phone, MapPin, Video, Building2, CheckCircle2, Clock } from "lucide-react";
+import { Users, IndianRupee, TrendingUp, CalendarDays, Mail, Phone, Video, Building2, CheckCircle2, Clock } from "lucide-react";
 
 const TABS = [
   { id: "clients", label: "Clients" },
@@ -10,12 +10,12 @@ const TABS = [
   { id: "earnings", label: "Earnings" },
 ];
 
-const Stat = ({ icon: Icon, label, value, tone = "violet" }) => {
-  const tones = { violet: "bg-[#6D28D9]/10 text-[#6D28D9]", green: "bg-emerald-50 text-emerald-600", amber: "bg-amber-50 text-amber-600", blue: "bg-blue-50 text-blue-600" };
+const Stat = ({ icon: Icon, label, value, tone = "orange" }) => {
+  const tones = { orange: "bg-[#F97316]/15 text-[#F97316]", green: "bg-emerald-500/15 text-emerald-400", amber: "bg-amber-500/15 text-amber-400", blue: "bg-blue-500/15 text-blue-400" };
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex items-center gap-3">
+    <div className="bg-[#151A24] rounded-2xl border border-white/10 shadow-sm p-4 flex items-center gap-3">
       <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${tones[tone]}`}><Icon className="h-5 w-5" /></div>
-      <div><p className="text-[11px] uppercase tracking-wide text-gray-400 font-semibold">{label}</p><p className="text-lg font-bold text-gray-900">{value}</p></div>
+      <div><p className="text-[11px] uppercase tracking-wide text-gray-500 font-semibold">{label}</p><p className="text-lg font-bold text-white">{value}</p></div>
     </div>
   );
 };
@@ -58,16 +58,16 @@ export default function ProviderBookings() {
     setClients(c.data); setEarnings(e.data);
   };
 
-  const sel = "text-sm border border-gray-200 rounded-xl px-3 py-2 focus:border-[#6D28D9] outline-none bg-white";
+  const sel = "text-sm border border-white/10 rounded-xl px-3 py-2 focus:border-[#F97316] outline-none bg-white/5 text-white";
 
   return (
     <div>
-      <div className="bg-white border-b border-gray-200 px-4 sm:px-8 py-5">
-        <h1 className="font-display text-2xl font-bold text-gray-900">Bookings & clients</h1>
-        <p className="text-sm text-gray-500">Manage your subscribers, schedule and earnings</p>
+      <div className="bg-[#0F1420] border-b border-white/10 px-4 sm:px-8 py-5">
+        <h1 className="font-display text-2xl font-bold text-white">Bookings & clients</h1>
+        <p className="text-sm text-gray-400">Manage your subscribers, schedule and earnings</p>
         <div className="flex gap-2 mt-4">
           {TABS.map((t) => (
-            <button key={t.id} data-testid={`bookings-tab-${t.id}`} onClick={() => setTab(t.id)} className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${tab === t.id ? "bg-[#6D28D9] text-white" : "bg-gray-100 text-gray-600"}`}>{t.label}</button>
+            <button key={t.id} data-testid={`bookings-tab-${t.id}`} onClick={() => setTab(t.id)} className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${tab === t.id ? "bg-[#F97316] text-white" : "bg-white/10 text-gray-400 hover:bg-white/5"}`}>{t.label}</button>
           ))}
         </div>
       </div>
@@ -76,14 +76,14 @@ export default function ProviderBookings() {
         {/* Summary stats */}
         {earnings && (
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-            <Stat icon={Users} label="Clients" value={earnings.client_count} tone="violet" />
+            <Stat icon={Users} label="Clients" value={earnings.client_count} tone="orange" />
             <Stat icon={IndianRupee} label="Collected" value={fmt(earnings.collected)} tone="green" />
             <Stat icon={Clock} label="Due" value={fmt(earnings.due)} tone="amber" />
             <Stat icon={TrendingUp} label="Potential" value={fmt(earnings.potential)} tone="blue" />
           </div>
         )}
 
-        {loading ? <p className="text-sm text-gray-400">Loading…</p> : (
+        {loading ? <p className="text-sm text-gray-500">Loading…</p> : (
           <>
             {/* CLIENTS */}
             {tab === "clients" && (
@@ -105,33 +105,33 @@ export default function ProviderBookings() {
                 </div>
 
                 {clients.length === 0 ? (
-                  <div className="flex flex-col items-center py-16 text-center"><Users className="h-10 w-10 text-gray-300 mb-3" /><h3 className="font-display text-xl font-bold text-gray-900">No clients yet</h3></div>
+                  <div className="flex flex-col items-center py-16 text-center"><Users className="h-10 w-10 text-gray-600 mb-3" /><h3 className="font-display text-xl font-bold text-white">No clients yet</h3></div>
                 ) : (
                   <div className="space-y-3">
                     {clients.map((b) => (
-                      <div key={b.id} data-testid={`client-${b.id}`} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+                      <div key={b.id} data-testid={`client-${b.id}`} className="bg-[#151A24] rounded-2xl border border-white/10 shadow-sm p-4">
                         <div className="flex flex-wrap items-start justify-between gap-3">
                           <div className="min-w-0">
-                            <p className="font-semibold text-gray-900">{b.customer_name}</p>
+                            <p className="font-semibold text-white">{b.customer_name}</p>
                             <p className="text-xs text-gray-500 flex items-center gap-1"><Mail className="h-3 w-3" /> {b.customer_email}</p>
                             {b.customer_phone && <p className="text-xs text-gray-500 flex items-center gap-1"><Phone className="h-3 w-3" /> {b.customer_phone}</p>}
                             <p className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
                               {b.mode === "virtual" ? <Video className="h-3 w-3" /> : <Building2 className="h-3 w-3" />}
                               {b.mode === "virtual" ? "Online" : (b.society_name || "Physical")}
-                              {b.address && b.mode !== "virtual" ? <span className="text-gray-400"> · {b.address}</span> : null}
+                              {b.address && b.mode !== "virtual" ? <span className="text-gray-600"> · {b.address}</span> : null}
                             </p>
                           </div>
                           <div className="text-right shrink-0">
-                            <p className="text-sm font-bold text-gray-900">{fmt(b.total)}</p>
-                            <button data-testid={`toggle-payment-${b.id}`} onClick={() => togglePayment(b)} className={`mt-1 text-[10px] font-semibold uppercase px-2 py-1 rounded-full ${b.payment_status === "paid" ? "bg-emerald-50 text-emerald-600" : "bg-amber-50 text-amber-600"}`}>
+                            <p className="text-sm font-bold text-white">{fmt(b.total)}</p>
+                            <button data-testid={`toggle-payment-${b.id}`} onClick={() => togglePayment(b)} className={`mt-1 text-[10px] font-semibold uppercase px-2 py-1 rounded-full ${b.payment_status === "paid" ? "bg-emerald-500/15 text-emerald-400" : "bg-amber-500/15 text-amber-400"}`}>
                               {b.payment_status === "paid" ? "Paid" : `Due ${fmt(b.fee_due)}`}
                             </button>
                           </div>
                         </div>
-                        <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-gray-100 text-center">
-                          <div><p className="text-[10px] uppercase text-gray-400 font-semibold">Program</p><p className="text-xs font-medium text-gray-800 truncate">{b.service_title}</p><p className="text-[11px] text-gray-500">{b.plan_label} · {b.time_slot}</p></div>
-                          <div><p className="text-[10px] uppercase text-gray-400 font-semibold">Sessions</p><p className="text-xs font-medium text-gray-800">{b.sessions_completed}/{b.sessions_total}</p><p className="text-[11px] text-gray-500">{b.sessions_due} due</p></div>
-                          <div><p className="text-[10px] uppercase text-gray-400 font-semibold">Period</p><p className="text-xs font-medium text-gray-800">{fmtDate(b.start_date || b.date)}</p><p className="text-[11px] text-gray-500">to {fmtDate(b.end_date)}</p></div>
+                        <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-white/10 text-center">
+                          <div><p className="text-[10px] uppercase text-gray-500 font-semibold">Program</p><p className="text-xs font-medium text-gray-200 truncate">{b.service_title}</p><p className="text-[11px] text-gray-500">{b.plan_label} · {b.time_slot}</p></div>
+                          <div><p className="text-[10px] uppercase text-gray-500 font-semibold">Sessions</p><p className="text-xs font-medium text-gray-200">{b.sessions_completed}/{b.sessions_total}</p><p className="text-[11px] text-gray-500">{b.sessions_due} due</p></div>
+                          <div><p className="text-[10px] uppercase text-gray-500 font-semibold">Period</p><p className="text-xs font-medium text-gray-200">{fmtDate(b.start_date || b.date)}</p><p className="text-[11px] text-gray-500">to {fmtDate(b.end_date)}</p></div>
                         </div>
                       </div>
                     ))}
@@ -143,17 +143,17 @@ export default function ProviderBookings() {
             {/* CALENDAR */}
             {tab === "calendar" && (
               <div>
-                <p className="text-sm text-gray-500 mb-3 flex items-center gap-1.5"><CalendarDays className="h-4 w-4" /> Next 14 days — sessions & clients</p>
+                <p className="text-sm text-gray-400 mb-3 flex items-center gap-1.5"><CalendarDays className="h-4 w-4" /> Next 14 days — sessions & clients</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                   {calendar.map((d) => (
-                    <div key={d.date} data-testid={`cal-${d.date}`} className={`rounded-2xl border p-4 ${d.sessions > 0 ? "border-[#6D28D9]/30 bg-[#6D28D9]/5" : "border-gray-100 bg-white"}`}>
+                    <div key={d.date} data-testid={`cal-${d.date}`} className={`rounded-2xl border p-4 ${d.sessions > 0 ? "border-[#F97316]/40 bg-[#F97316]/10" : "border-white/10 bg-[#151A24]"}`}>
                       <div className="flex items-center justify-between">
-                        <div><p className="text-xs text-gray-400 uppercase">{d.weekday}</p><p className="text-2xl font-bold text-gray-900 leading-none">{d.day}</p></div>
-                        <div className="text-right"><p className="text-sm font-bold text-[#6D28D9]">{d.sessions} sess.</p><p className="text-xs text-gray-500">{d.clients} client{d.clients !== 1 ? "s" : ""}</p></div>
+                        <div><p className="text-xs text-gray-500 uppercase">{d.weekday}</p><p className="text-2xl font-bold text-white leading-none">{d.day}</p></div>
+                        <div className="text-right"><p className="text-sm font-bold text-[#F97316]">{d.sessions} sess.</p><p className="text-xs text-gray-500">{d.clients} client{d.clients !== 1 ? "s" : ""}</p></div>
                       </div>
                       {d.by_service.length > 0 && (
-                        <div className="mt-2 pt-2 border-t border-gray-100 space-y-0.5">
-                          {d.by_service.map((s) => <p key={s.service} className="text-[11px] text-gray-600 flex justify-between"><span className="truncate">{s.service}</span><span className="font-medium">{s.count}</span></p>)}
+                        <div className="mt-2 pt-2 border-t border-white/10 space-y-0.5">
+                          {d.by_service.map((s) => <p key={s.service} className="text-[11px] text-gray-400 flex justify-between"><span className="truncate">{s.service}</span><span className="font-medium">{s.count}</span></p>)}
                         </div>
                       )}
                     </div>
@@ -165,24 +165,24 @@ export default function ProviderBookings() {
             {/* EARNINGS */}
             {tab === "earnings" && earnings && (
               <div>
-                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-                  <div className="grid grid-cols-12 px-5 py-3 border-b border-gray-100 text-[11px] uppercase tracking-wide text-gray-400 font-semibold bg-gray-50">
+                <div className="bg-[#151A24] rounded-2xl border border-white/10 shadow-sm overflow-hidden">
+                  <div className="grid grid-cols-12 px-5 py-3 border-b border-white/10 text-[11px] uppercase tracking-wide text-gray-500 font-semibold bg-white/5">
                     <div className="col-span-5">Program</div><div className="col-span-2 text-center">Clients</div><div className="col-span-2 text-right">Collected</div><div className="col-span-3 text-right">Potential</div>
                   </div>
-                  {earnings.by_service.length === 0 ? <p className="text-sm text-gray-400 px-5 py-6">No earnings yet.</p> : earnings.by_service.map((r) => (
-                    <div key={r.service} className="grid grid-cols-12 px-5 py-4 border-b border-gray-100 text-sm items-center">
-                      <div className="col-span-5 font-medium text-gray-900 truncate">{r.service}</div>
-                      <div className="col-span-2 text-center text-gray-600">{r.clients}</div>
-                      <div className="col-span-2 text-right font-semibold text-emerald-600">{fmt(r.collected)}</div>
-                      <div className="col-span-3 text-right text-gray-700">{fmt(r.potential)}</div>
+                  {earnings.by_service.length === 0 ? <p className="text-sm text-gray-500 px-5 py-6">No earnings yet.</p> : earnings.by_service.map((r) => (
+                    <div key={r.service} className="grid grid-cols-12 px-5 py-4 border-b border-white/10 text-sm items-center">
+                      <div className="col-span-5 font-medium text-white truncate">{r.service}</div>
+                      <div className="col-span-2 text-center text-gray-400">{r.clients}</div>
+                      <div className="col-span-2 text-right font-semibold text-emerald-400">{fmt(r.collected)}</div>
+                      <div className="col-span-3 text-right text-gray-300">{fmt(r.potential)}</div>
                     </div>
                   ))}
-                  <div className="grid grid-cols-12 px-5 py-4 text-sm items-center bg-gray-50 font-bold">
-                    <div className="col-span-5 text-gray-900">Total</div><div className="col-span-2 text-center text-gray-600">{earnings.client_count}</div>
-                    <div className="col-span-2 text-right text-emerald-600">{fmt(earnings.collected)}</div><div className="col-span-3 text-right text-gray-900">{fmt(earnings.potential)}</div>
+                  <div className="grid grid-cols-12 px-5 py-4 text-sm items-center bg-white/5 font-bold">
+                    <div className="col-span-5 text-white">Total</div><div className="col-span-2 text-center text-gray-400">{earnings.client_count}</div>
+                    <div className="col-span-2 text-right text-emerald-400">{fmt(earnings.collected)}</div><div className="col-span-3 text-right text-white">{fmt(earnings.potential)}</div>
                   </div>
                 </div>
-                <div className="mt-4 flex items-center gap-2 text-xs text-gray-500 bg-white border border-gray-100 rounded-xl px-4 py-3"><CheckCircle2 className="h-4 w-4 text-emerald-500" /> Mark fees paid from the Clients tab to update collected earnings.</div>
+                <div className="mt-4 flex items-center gap-2 text-xs text-gray-400 bg-[#151A24] border border-white/10 rounded-xl px-4 py-3"><CheckCircle2 className="h-4 w-4 text-emerald-400" /> Mark fees paid from the Clients tab to update collected earnings.</div>
               </div>
             )}
           </>
