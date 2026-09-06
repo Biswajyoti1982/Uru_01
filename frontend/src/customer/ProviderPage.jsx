@@ -6,6 +6,10 @@ import { useCategories } from "@/context/CategoriesContext";
 import { fmt } from "@/lib/format";
 import { useCart } from "@/context/CartContext";
 import { DAY_LABELS } from "@/lib/slots";
+import { FOCUS_AREAS, BATCH_TYPES } from "@/lib/trainerOptions";
+
+const FOCUS_LABEL = Object.fromEntries(FOCUS_AREAS.map((o) => [o.id, o.label]));
+const BATCH_LABEL = Object.fromEntries(BATCH_TYPES.map((o) => [o.id, o.label]));
 
 const Chip = ({ children, tone = "gray" }) => {
   const tones = { gray: "bg-gray-100 text-gray-700", orange: "bg-[#F97316]/10 text-[#F97316]", violet: "bg-[#6D28D9]/10 text-[#6D28D9]" };
@@ -16,12 +20,14 @@ const ServiceDetails = ({ s }) => {
   const days = (s.available_days || []).map((d) => DAY_LABELS[d]).join(", ");
   const maxBatch = Math.max(0, ...(s.slots || []).map((x) => x.batch_size || 0));
   const badges = [];
-  if (s.gender && s.gender !== "all") badges.push(["For " + s.gender, "violet"]);
+  (s.focus_areas || []).forEach((f) => badges.push([FOCUS_LABEL[f] || f, "orange"]));
+  (s.batch_types || []).forEach((b) => badges.push([BATCH_LABEL[b] || b, "violet"]));
+  (s.client_levels || []).forEach((c) => badges.push([c, "gray"]));
+  if (s.gender && s.gender !== "all") badges.push(["For " + s.gender, "gray"]);
   if (s.age_group && s.age_group !== "all") badges.push([s.age_group, "gray"]);
-  if (s.experience_level && s.experience_level !== "all") badges.push([s.experience_level, "gray"]);
   return (
     <div className="mt-3 space-y-2.5">
-      {badges.length > 0 && <div className="flex flex-wrap gap-1.5">{badges.map(([t, tone]) => <Chip key={t} tone={tone}>{t}</Chip>)}</div>}
+      {badges.length > 0 && <div className="flex flex-wrap gap-1.5">{badges.map(([t, tone], i) => <Chip key={`${t}-${i}`} tone={tone}>{t}</Chip>)}</div>}
       {days && <p className="text-xs text-gray-600 flex items-center gap-1.5"><CalendarDays className="h-3.5 w-3.5 text-gray-400" /> Schedule: {days}</p>}
       {maxBatch > 0 && <p className="text-xs text-gray-600 flex items-center gap-1.5"><Users className="h-3.5 w-3.5 text-gray-400" /> Batch size: up to {maxBatch} per slot</p>}
       {s.eligibility && <p className="text-xs text-gray-500 flex items-start gap-1.5"><Info className="h-3.5 w-3.5 text-gray-400 mt-0.5 shrink-0" /> {s.eligibility}</p>}
