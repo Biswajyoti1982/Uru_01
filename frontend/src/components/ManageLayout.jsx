@@ -61,6 +61,7 @@ export default function ManageLayout() {
           {isProvider && (
             <>
               <p className="px-4 pt-2 pb-1 text-[10px] uppercase tracking-widest text-gray-400 font-semibold">Provider</p>
+              <Item to="/manage/provider" end icon={LayoutDashboard} label="Home" testid="nav-provider-home" onClick={close} />
               <Item to="/manage/provider/services" icon={Store} label="My Services" testid="nav-provider-services" onClick={close} />
               <Item to="/manage/provider/profile" icon={UserCog} label="My Profile" testid="nav-provider-profile" onClick={close} />
               <Item to="/manage/provider/bookings" icon={ClipboardList} label="Bookings" testid="nav-provider-bookings" onClick={close} />

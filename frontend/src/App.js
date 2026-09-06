@@ -22,6 +22,7 @@ import Bookings from "@/customer/Bookings";
 import Account from "@/customer/Account";
 import Onboard from "@/provider/Onboard";
 import ProviderDashboard from "@/provider/Dashboard";
+import ProviderOverview from "@/provider/Overview";
 import ProviderProfile from "@/provider/Profile";
 import ProviderBookings from "@/provider/ProviderBookings";
 import AdminOverview from "@/admin/Overview";
@@ -58,7 +59,8 @@ function AppRouter() {
       </Route>
 
       <Route path="/manage" element={<ProtectedRoute><ManageLayout /></ProtectedRoute>}>
-        <Route index element={<Navigate to="/manage/provider/services" replace />} />
+        <Route index element={<Navigate to="/manage/provider" replace />} />
+        <Route path="provider" element={<ProviderOverview />} />
         <Route path="provider/services" element={<ProviderDashboard />} />
         <Route path="provider/profile" element={<ProviderProfile />} />
         <Route path="provider/bookings" element={<ProviderBookings />} />
