@@ -16,8 +16,8 @@ export default function URULanding() {
       <div className="relative">
         <div className="absolute inset-0">
           <img
-            src="https://images.unsplash.com/photo-1634449571010-02389ed0f9b0?crop=entropy&cs=srgb&fm=jpg&q=85&w=1200"
-            alt="hero"
+            src="https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?crop=entropy&cs=srgb&fm=jpg&q=85&w=1200"
+            alt="Gym trainer coaching a client"
             className="h-full w-full object-cover"
           />
           <div className="absolute inset-0 bg-gradient-to-b from-[#6D28D9]/85 via-[#6D28D9]/70 to-[#5B21B6]/95" />
