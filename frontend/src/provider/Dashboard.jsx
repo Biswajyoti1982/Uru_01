@@ -140,7 +140,7 @@ export default function ProviderDashboard() {
             <textarea data-testid="service-desc-input" className={inputCls} rows={2} placeholder="Description" value={svcForm.description} onChange={(e) => setSvcForm({ ...svcForm, description: e.target.value })} />
             <div className="grid grid-cols-2 gap-3">
               <select data-testid="service-category-select" className={inputCls} value={svcForm.category} onChange={(e) => setSvcForm({ ...svcForm, category: e.target.value })}>
-                {categories.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
+                {categories.filter((c) => c.id === "gym").map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
               </select>
               <input data-testid="service-location-input" className={inputCls} placeholder="Location" value={svcForm.location} onChange={(e) => setSvcForm({ ...svcForm, location: e.target.value })} />
             </div>

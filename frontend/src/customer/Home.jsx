@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Search, MapPin, Star, ChevronRight, Award, ShieldCheck, Dumbbell, Sparkles } from "lucide-react";
 import api from "@/lib/api";
-import { useCategories } from "@/context/CategoriesContext";
 import { fmt } from "@/lib/format";
 import { useAuth } from "@/context/AuthContext";
 
@@ -44,7 +43,6 @@ export default function Home() {
   const [exp, setExp] = useState("all");
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { categories } = useCategories();
 
   useEffect(() => { api.get("/providers", { params: { category: "gym" } }).then((r) => setProviders(r.data)); }, []);
 
@@ -61,7 +59,6 @@ export default function Home() {
 
   const featured = filtered[0];
   const rest = filtered.slice(1);
-  const comingSoon = categories.filter((c) => c.id !== "gym");
 
   return (
     <div className="pb-4">
@@ -135,23 +132,6 @@ export default function Home() {
           ))}
         </div>
       </div>
-
-      {/* Coming soon */}
-      {comingSoon.length > 0 && (
-        <div className="px-5 mt-8">
-          <div className="rounded-3xl border border-dashed border-gray-200 bg-white p-5">
-            <h3 className="font-display text-base font-bold text-gray-900">More activities coming soon</h3>
-            <p className="text-xs text-gray-500 mt-1">We're starting with gym trainers. Next up:</p>
-            <div className="flex flex-wrap gap-2 mt-3">
-              {comingSoon.map((c) => (
-                <span key={c.id} className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full bg-gray-100 text-gray-500">
-                  <c.icon className="h-3.5 w-3.5" style={{ color: c.color }} /> {c.label}
-                </span>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

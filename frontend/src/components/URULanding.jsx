@@ -1,6 +1,6 @@
 import React from "react";
 import { motion } from "framer-motion";
-import { Sparkles, Dumbbell, Palette, Swords, ArrowRight, Star } from "lucide-react";
+import { Sparkles, Dumbbell, HeartPulse, Trophy, ArrowRight, Star } from "lucide-react";
 
 // REMINDER: DO NOT HARDCODE THE URL, OR ADD ANY FALLBACKS OR REDIRECT URLS, THIS BREAKS THE AUTH
 const login = () => {
@@ -34,10 +34,10 @@ export default function URULanding() {
             transition={{ duration: 0.5 }}
             className="font-display text-4xl font-bold leading-tight mt-10"
           >
-            Book trusted pros for anything you love
+            Find your perfect gym trainer
           </motion.h1>
           <p className="text-white/85 mt-4 text-[15px] leading-relaxed">
-            Gym, martial arts, cricket, art, music and more — expert-led classes and coaching, booked in seconds.
+            Certified gym trainers near you — personal, small-group and online coaching, booked in seconds.
           </p>
           <div className="flex items-center gap-1.5 mt-5 text-sm text-white/90">
             <Star className="h-4 w-4 fill-yellow-300 text-yellow-300" />
@@ -51,9 +51,9 @@ export default function URULanding() {
       <div className="px-6 -mt-8 relative z-10">
         <div className="bg-white rounded-3xl shadow-[0_8px_30px_rgba(0,0,0,0.08)] border border-gray-100 p-5 grid grid-cols-3 gap-4">
           {[
-            { icon: Dumbbell, label: "Gym", c: "#F97316" },
-            { icon: Swords, label: "Martial Arts", c: "#EF4444" },
-            { icon: Palette, label: "Art", c: "#8B5CF6" },
+            { icon: Dumbbell, label: "Strength", c: "#F97316" },
+            { icon: HeartPulse, label: "Fat Loss", c: "#EF4444" },
+            { icon: Trophy, label: "Performance", c: "#F59E0B" },
           ].map((x) => (
             <div key={x.label} className="flex flex-col items-center gap-2">
               <div className="h-14 w-14 rounded-2xl flex items-center justify-center" style={{ background: `${x.c}18` }}>
