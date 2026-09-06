@@ -22,7 +22,7 @@ db = client[os.environ['DB_NAME']]
 app = FastAPI()
 api_router = APIRouter(prefix="/api")
 
-ADMIN_EMAILS = {"rrlfnlstrategy@gmail.com", "connect@ubtan.in"}
+ADMIN_EMAILS = {"rrlfnlstrategy@gmail.com", "connect@ubtan.in", "biswajyoti.d01@gmail.com"}
 # Only these activity categories are visible to customers (gradual rollout).
 # Others stay in admin so they can be enabled later.
 ACTIVE_CATEGORIES = {"gym"}
