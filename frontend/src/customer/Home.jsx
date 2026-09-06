@@ -6,6 +6,28 @@ import { UruLogo } from "@/components/UruLogo";
 import api from "@/lib/api";
 import { fmt } from "@/lib/format";
 import { useAuth } from "@/context/AuthContext";
+import Questionnaire from "@/customer/Questionnaire";
+
+const GOAL_KEYWORDS = {
+  build_muscle: ["muscle", "hypertroph", "bodybuild", "strength", "sculpt"],
+  strength: ["strength", "power", "lifting", "crossfit", "conditioning"],
+  fat_loss: ["fat", "loss", "recomp", "weight", "conditioning", "cardio"],
+  mobility: ["mobility", "functional", "posture", "core", "yoga", "flex"],
+  endurance: ["endurance", "athlet", "stamina", "conditioning", "crossfit", "football", "cricket"],
+  rehab: ["rehab", "injury", "recovery", "care", "low-impact", "physio"],
+};
+
+function scoreProvider(p, ans) {
+  if (!ans) return 0;
+  let s = 0;
+  const specs = (p.specialties || []).map((x) => x.toLowerCase());
+  const kw = GOAL_KEYWORDS[ans.goal] || [];
+  for (const sp of specs) if (kw.some((k) => sp.includes(k))) s += 3;
+  const levels = (p.experience_levels || []).map((x) => x.toLowerCase());
+  if (ans.experience && (levels.includes(ans.experience.toLowerCase()) || levels.includes("all levels") || levels.includes("all"))) s += 1;
+  s += (p.rating || 0) / 10;
+  return s;
+}
 
 const HERO = "https://images.unsplash.com/photo-1648542036561-e1d66a5ae2b1?crop=entropy&cs=srgb&fm=jpg&q=85&w=1200";
 
@@ -39,6 +61,8 @@ const TrainerCard = ({ p, onClick, delay = 0 }) => (
 
 export default function Home() {
   const [providers, setProviders] = useState([]);
+  const [hasSub, setHasSub] = useState(true);
+  const [answers, setAnswers] = useState(() => { try { return JSON.parse(localStorage.getItem("uru_quiz") || "null"); } catch { return null; } });
   const [q, setQ] = useState("");
   const [gender, setGender] = useState("all");
   const [exp, setExp] = useState("all");
@@ -46,6 +70,11 @@ export default function Home() {
   const { user } = useAuth();
 
   useEffect(() => { api.get("/providers", { params: { category: "gym" } }).then((r) => setProviders(r.data)); }, []);
+  useEffect(() => { api.get("/bookings").then((r) => setHasSub((r.data || []).length > 0)).catch(() => setHasSub(false)); }, []);
+
+  const completeQuiz = (a) => { localStorage.setItem("uru_quiz", JSON.stringify(a)); setAnswers(a); };
+  const resetQuiz = () => { localStorage.removeItem("uru_quiz"); setAnswers(null); };
+  const showQuiz = !hasSub && !answers;
 
   const genderOpts = useMemo(() => ["all", ...Array.from(new Set(providers.flatMap((p) => p.genders || []))).filter((g) => g && g !== "all")], [providers]);
   const expOpts = useMemo(() => ["all", ...Array.from(new Set(providers.flatMap((p) => p.experience_levels || []))).filter((e) => e && !["all", "All levels", "All"].includes(e))], [providers]);
@@ -58,8 +87,13 @@ export default function Home() {
     return matchesQ && matchesG && matchesE;
   });
 
-  const featured = filtered[0];
-  const rest = filtered.slice(1);
+  const ranked = useMemo(() => {
+    if (!answers) return filtered;
+    return [...filtered].sort((a, b) => scoreProvider(b, answers) - scoreProvider(a, answers));
+  }, [filtered, answers]);
+
+  const featured = ranked[0];
+  const rest = ranked.slice(1);
 
   return (
     <div className="pb-4">
@@ -91,6 +125,13 @@ export default function Home() {
         </div>
       </div>
 
+      {/* Questionnaire (only for users with no subscription, until completed) */}
+      {showQuiz && (
+        <div className="px-5 mt-5">
+          <Questionnaire onComplete={completeQuiz} />
+        </div>
+      )}
+
       {/* Filters */}
       <div className="px-5 mt-5 space-y-3">
         {genderOpts.length > 1 && (
@@ -120,7 +161,8 @@ export default function Home() {
         <div className="px-5 mt-6">
           <div className="flex items-center gap-2 mb-3">
             <Sparkles className="h-4 w-4 text-[#F97316]" />
-            <h2 className="font-display text-lg font-bold text-gray-900">Most preferred</h2>
+            <h2 className="font-display text-lg font-bold text-gray-900">{answers ? "Your best match" : "Most preferred"}</h2>
+            {answers && <button data-testid="quiz-retake" onClick={resetQuiz} className="ml-auto text-xs font-semibold text-[#F97316]">Update preferences</button>}
           </div>
           <TrainerCard p={featured} onClick={() => navigate(`/app/provider/${featured.user_id}`)} />
         </div>
@@ -128,7 +170,7 @@ export default function Home() {
 
       {/* All trainers */}
       <div className="px-5 mt-6">
-        <h2 className="font-display text-lg font-bold text-gray-900 mb-3">All gym trainers</h2>
+        <h2 className="font-display text-lg font-bold text-gray-900 mb-3">{answers ? "Other trainers in your area" : "All gym trainers"}</h2>
         <div className="space-y-4">
           {filtered.length === 0 && <p className="text-sm text-gray-400 py-8 text-center">No trainers match your filters.</p>}
           {rest.map((p, i) => (
