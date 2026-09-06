@@ -112,8 +112,8 @@ export default function Checkout() {
         </button>
         <h1 className="font-display text-lg font-bold text-gray-900">{titleMap[current]}</h1>
         <div className="ml-auto flex gap-1.5">
-          {stepList.map((_, i) => (
-            <div key={i} className={`h-1.5 rounded-full transition-all ${i === step ? "w-6 bg-[#6D28D9]" : "w-1.5 bg-gray-200"}`} />
+          {stepList.map((name, i) => (
+            <div key={name} className={`h-1.5 rounded-full transition-all ${i === step ? "w-6 bg-[#6D28D9]" : "w-1.5 bg-gray-200"}`} />
           ))}
         </div>
       </div>

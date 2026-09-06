@@ -1,0 +1,24 @@
+{
+  "summary": "Regression check after (1) deletion of dead files src/components/Landing.jsx and src/pages/customer/* and (2) React key stability changes in Checkout.jsx (progress dots keyed by step name) and Dashboard.jsx (available-day buttons keyed by day label). All targeted flows pass with zero regressions. No lingering imports of deleted files (grep confirms only URULanding is referenced). Landing (/), customer /app home, provider page, checkout (virtual 3-step & physical 4-step), provider services dialog with day toggles, and Bookings tabs all render without console/page errors.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Deletion clean: `grep -rn 'Landing\\|pages/customer' src/` returns only the intended `import Landing from @/components/URULanding` alias in App.js - no stale references.",
+    "Checkout.jsx stepper keys (key={name}) verified: 3 dots for virtual (active_idx 0->1->2) and 4 dots for physical after picking a Physical slot (active_idx 0->1->2->3). isPhysical toggle rerenders the stepper correctly.",
+    "Dashboard.jsx day buttons (key={lbl}, data-testid day-0..day-6) toggle on/off with class change verified, and revert to original class on second toggle - no stale state due to key reuse."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "n/a", "frontend": "100%"},
+  "test_credentials": "customer=test_session_cust_001, provider=test_session_prov_001 (session_token cookie)",
+  "seed_data_creation": "None",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "iteration_8 is a regression-only pass focused on the code-cleanup + key-stability change. Full functional coverage was done in iteration_7. Verified end-to-end: Landing unauth -> customer home Gym landing -> provider page -> add to cart -> checkout Monthly plan -> schedule (virtual OR physical+society) -> [address for physical] -> summary with Confirm subscription. Provider services New dialog opens, day toggles work, Bookings tabs (Clients/Calendar/Earnings) render.",
+  "rca of the issue": "N/A - no issues found."
+}

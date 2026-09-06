@@ -169,7 +169,7 @@ export default function ProviderDashboard() {
                 {DAY_LABELS.map((lbl, idx) => {
                   const on = svcForm.available_days.includes(idx);
                   return (
-                    <button type="button" key={idx} data-testid={`day-${idx}`} onClick={() => toggleDay(idx)} className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${on ? "bg-[#6D28D9] text-white border-[#6D28D9]" : "border-gray-200 text-gray-600 hover:bg-gray-50"}`}>{lbl}</button>
+                    <button type="button" key={lbl} data-testid={`day-${idx}`} onClick={() => toggleDay(idx)} className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${on ? "bg-[#6D28D9] text-white border-[#6D28D9]" : "border-gray-200 text-gray-600 hover:bg-gray-50"}`}>{lbl}</button>
                   );
                 })}
               </div>
