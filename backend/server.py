@@ -256,7 +256,7 @@ async def create_session(response: Response, x_session_id: Optional[str] = Heade
     response.set_cookie("session_token", session_token, httponly=True, secure=True,
                         samesite="none", path="/", max_age=7 * 24 * 3600)
     user = await db.users.find_one({"user_id": user_id}, {"_id": 0})
-    return user
+    return {**user, "session_token": session_token}
 
 
 @api_router.get("/auth/me")
@@ -376,7 +376,8 @@ async def register_phone(body: PhoneRegister, response: Response):
         "auth_method": "password", "created_at": datetime.now(timezone.utc).isoformat(),
     })
     await _issue_session(response, user_id)
-    return _sanitize(await db.users.find_one({"user_id": user_id}))
+    token = await db.user_sessions.find_one({"user_id": user_id}, {"_id": 0}, sort=[("created_at", -1)])
+    return {**_sanitize(await db.users.find_one({"user_id": user_id})), "session_token": token["session_token"] if token else None}
 
 
 @api_router.post("/auth/login")
@@ -391,8 +392,8 @@ async def login_phone(body: PhoneLogin, request: Request, response: Response):
         await _record_fail(identifier)
         raise HTTPException(status_code=401, detail="Invalid mobile number or password")
     await _clear_fail(identifier)
-    await _issue_session(response, u["user_id"])
-    return _sanitize(u)
+    token = await _issue_session(response, u["user_id"])
+    return {**_sanitize(u), "session_token": token}
 
 
 @api_router.post("/auth/otp/request")
@@ -422,8 +423,8 @@ async def otp_verify(body: OtpVerify, response: Response):
             "auth_method": "otp", "created_at": datetime.now(timezone.utc).isoformat(),
         })
         u = await db.users.find_one({"user_id": user_id})
-    await _issue_session(response, u["user_id"])
-    return _sanitize(u)
+    token = await _issue_session(response, u["user_id"])
+    return {**_sanitize(u), "session_token": token}
 
 
 # ---------------- Provider onboarding ----------------
