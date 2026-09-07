@@ -7,6 +7,7 @@ import api from "@/lib/api";
 import { fmt } from "@/lib/format";
 import { useAuth } from "@/context/AuthContext";
 import Questionnaire from "@/customer/Questionnaire";
+import SubscribedHome from "@/customer/SubscribedHome";
 
 const GOAL_KEYWORDS = {
   build_muscle: ["muscle", "hypertroph", "bodybuild", "strength", "sculpt"],
@@ -68,7 +69,8 @@ const TrainerCard = ({ p, onClick, delay = 0 }) => (
 
 export default function Home() {
   const [providers, setProviders] = useState([]);
-  const [hasSub, setHasSub] = useState(true);
+  const [hasSub, setHasSub] = useState(false);
+  const [subLoaded, setSubLoaded] = useState(false);
   const [answers, setAnswers] = useState(() => { try { return JSON.parse(localStorage.getItem("uru_quiz") || "null"); } catch { return null; } });
   const [q, setQ] = useState("");
   const [gender, setGender] = useState("all");
@@ -79,11 +81,16 @@ export default function Home() {
   const preview = new URLSearchParams(location.search).get("preview") === "1";
 
   useEffect(() => { api.get("/providers", { params: { category: "gym" } }).then((r) => setProviders(r.data)); }, []);
-  useEffect(() => { api.get("/bookings").then((r) => setHasSub((r.data || []).length > 0)).catch(() => setHasSub(false)); }, []);
+  useEffect(() => {
+    api.get("/bookings/me")
+      .then((r) => setHasSub((r.data || []).some((b) => b.status !== "cancelled")))
+      .catch(() => setHasSub(false))
+      .finally(() => setSubLoaded(true));
+  }, []);
 
   const completeQuiz = (a) => { localStorage.setItem("uru_quiz", JSON.stringify(a)); setAnswers(a); };
   const resetQuiz = () => { localStorage.removeItem("uru_quiz"); setAnswers(null); };
-  const showQuiz = !preview && !hasSub && !answers;
+  const showQuiz = !preview && subLoaded && !hasSub && !answers;
 
   const genderOpts = useMemo(() => ["all", ...Array.from(new Set(providers.flatMap((p) => p.genders || []))).filter((g) => g && g !== "all")], [providers]);
   const expOpts = useMemo(() => ["all", ...Array.from(new Set(providers.flatMap((p) => p.experience_levels || []))).filter((e) => e && !["all", "All levels", "All"].includes(e))], [providers]);
@@ -108,6 +115,9 @@ export default function Home() {
   if (!preview && user && (user.provider_status === "approved" || user.role === "admin")) {
     return <Navigate to={user.role === "admin" ? "/manage/admin" : "/manage/provider"} replace />;
   }
+
+  // Subscribed customers get the dashboard homepage.
+  if (!preview && subLoaded && hasSub) return <SubscribedHome answers={answers} />;
 
   return (
     <div className="pb-4">

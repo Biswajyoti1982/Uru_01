@@ -106,6 +106,13 @@ Build an app where users subscribe to classes for different activities (gym trai
 - Files: `ManageLayout.jsx`, `admin/{Overview,Providers,Services,Categories,Societies}.jsx`, `provider/{Overview,Dashboard,Profile,ProviderBookings,Onboard}.jsx`. Provider service dialog now renders as a dark modal. Status badges shifted to dark tints (emerald/amber/red -400). All data-testids & logic preserved (CSS-only change).
 - Verified visually via screenshots (admin overview + services table, provider home + services dialog) with data loading correctly.
 
+## Iteration 11 (2026-06) — Subscribed-customer dashboard + trainer session logging
+- Subscribed customers now get a dedicated homepage (`customer/SubscribedHome.jsx`): a subscription banner (next session; changes to a **"Start session"** CTA when a session is today), a session-summary tile (total/done/left + payment paid/last-paid & next-due), a **session tracker** (last 3 sessions summarized by muscle-group category), **featured trainers** row, and goal-aware **health tips**.
+- Trainers log exercises per session from the Bookings→Clients tab ("Log / view sessions" → `provider/SessionLogDialog.jsx`) using a predefined library (`lib/exerciseLibrary.js`) + custom entries.
+- "Start session" marks the day's session attended (`POST /customer/sessions/{id}/attend`) and opens an in-progress checklist view.
+- Backend: `session_logs` collection; endpoints `GET /customer/home`, `POST/GET /provider/bookings/{id}/sessions`, `DELETE /provider/sessions/{id}`, `POST /customer/sessions/{id}/attend`; payment PATCH now stores `paid_at`. Fixed Home.jsx `hasSub` (was calling non-existent `GET /bookings`).
+- Verified end-to-end via curl (full flow) + screenshots (all sections + both dialogs).
+
 ## Backlog (P1/P2)
 - P1: Admin can pin/highlight activities/providers in a top strip on the Home feed.
 - P2: Customer pause-subscription (holidays); real ratings from completed bookings (currently a seeded field); email renewal reminders (Resend).

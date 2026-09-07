@@ -2,7 +2,8 @@ import React, { useEffect, useState } from "react";
 import { toast } from "sonner";
 import api from "@/lib/api";
 import { fmt, fmtDate } from "@/lib/format";
-import { Users, IndianRupee, TrendingUp, CalendarDays, Mail, Phone, Video, Building2, CheckCircle2, Clock } from "lucide-react";
+import SessionLogDialog from "@/provider/SessionLogDialog";
+import { Users, IndianRupee, TrendingUp, CalendarDays, Mail, Phone, Video, Building2, CheckCircle2, Clock, Dumbbell } from "lucide-react";
 
 const TABS = [
   { id: "clients", label: "Clients" },
@@ -28,6 +29,7 @@ export default function ProviderBookings() {
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [f, setF] = useState({ service_id: "", plan: "", mode: "", payment_status: "" });
+  const [logFor, setLogFor] = useState(null);
 
   const loadClients = async (filters = f) => {
     const params = Object.fromEntries(Object.entries(filters).filter(([, v]) => v));
@@ -133,6 +135,7 @@ export default function ProviderBookings() {
                           <div><p className="text-[10px] uppercase text-gray-500 font-semibold">Sessions</p><p className="text-xs font-medium text-gray-200">{b.sessions_completed}/{b.sessions_total}</p><p className="text-[11px] text-gray-500">{b.sessions_due} due</p></div>
                           <div><p className="text-[10px] uppercase text-gray-500 font-semibold">Period</p><p className="text-xs font-medium text-gray-200">{fmtDate(b.start_date || b.date)}</p><p className="text-[11px] text-gray-500">to {fmtDate(b.end_date)}</p></div>
                         </div>
+                        <button data-testid={`log-session-${b.id}`} onClick={() => setLogFor(b)} className="mt-3 w-full rounded-full bg-[#F97316]/10 text-[#F97316] hover:bg-[#F97316]/20 py-2 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors"><Dumbbell className="h-3.5 w-3.5" /> Log / view sessions</button>
                       </div>
                     ))}
                   </div>
@@ -188,6 +191,8 @@ export default function ProviderBookings() {
           </>
         )}
       </div>
+
+      <SessionLogDialog booking={logFor} open={!!logFor} onClose={() => setLogFor(null)} />
     </div>
   );
 }

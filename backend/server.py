@@ -564,7 +564,12 @@ async def update_booking_payment(booking_id: str, body: PaymentUpdate, user=Depe
     if not b:
         raise HTTPException(status_code=404, detail="Booking not found")
     status = "paid" if body.status == "paid" else "pending"
-    await db.bookings.update_one({"id": booking_id}, {"$set": {"payment_status": status}})
+    upd = {"payment_status": status}
+    if status == "paid":
+        upd["paid_at"] = datetime.now(timezone.utc).date().isoformat()
+    else:
+        upd["paid_at"] = None
+    await db.bookings.update_one({"id": booking_id}, {"$set": upd})
     return {"ok": True, "payment_status": status}
 
 
@@ -706,6 +711,185 @@ async def cancel_booking(booking_id: str, user=Depends(get_current_user)):
         raise HTTPException(status_code=404, detail="Booking not found")
     await db.bookings.update_one({"id": booking_id}, {"$set": {"status": "cancelled"}})
     return {"ok": True}
+
+
+# ---------------- Session logs (trainer records exercises per session) ----------------
+class SessionExercise(BaseModel):
+    name: str
+    category: str = "Other"
+
+
+class SessionLogCreate(BaseModel):
+    date: str
+    title: str = ""
+    exercises: List[SessionExercise] = []
+
+
+def _next_weekly_session(b, today):
+    try:
+        start = datetime.strptime(b.get("start_date") or b.get("date"), "%Y-%m-%d").date()
+        end = datetime.strptime(b.get("end_date"), "%Y-%m-%d").date()
+    except Exception:
+        return None
+    if today > end:
+        return None
+    ref = max(today, start)
+    delta = (start.weekday() - ref.weekday()) % 7
+    nd = ref + timedelta(days=delta)
+    return nd if nd <= end else None
+
+
+@api_router.post("/provider/bookings/{booking_id}/sessions")
+async def create_session_log(booking_id: str, body: SessionLogCreate, user=Depends(require_provider)):
+    b = await db.bookings.find_one({"id": booking_id, "provider_id": user["user_id"]}, {"_id": 0})
+    if not b:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    sid = f"ses_{uuid.uuid4().hex[:12]}"
+    doc = {
+        "id": sid, "booking_id": booking_id, "customer_id": b["customer_id"],
+        "provider_id": user["user_id"], "service_id": b.get("service_id"),
+        "service_title": b.get("service_title", ""),
+        "date": body.date, "title": body.title or "Training session",
+        "exercises": [{"name": e.name, "category": e.category} for e in body.exercises],
+        "status": "planned", "attended_at": None,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.session_logs.insert_one(doc)
+    return await db.session_logs.find_one({"id": sid}, {"_id": 0})
+
+
+@api_router.get("/provider/bookings/{booking_id}/sessions")
+async def list_session_logs(booking_id: str, user=Depends(require_provider)):
+    b = await db.bookings.find_one({"id": booking_id, "provider_id": user["user_id"]}, {"_id": 0})
+    if not b:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    return await db.session_logs.find({"booking_id": booking_id}, {"_id": 0}).sort("date", -1).to_list(500)
+
+
+@api_router.delete("/provider/sessions/{session_id}")
+async def delete_session_log(session_id: str, user=Depends(require_provider)):
+    res = await db.session_logs.delete_one({"id": session_id, "provider_id": user["user_id"]})
+    if res.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Session not found")
+    return {"ok": True}
+
+
+@api_router.post("/customer/sessions/{session_id}/attend")
+async def attend_session(session_id: str, user=Depends(get_current_user)):
+    s = await db.session_logs.find_one({"id": session_id, "customer_id": user["user_id"]}, {"_id": 0})
+    if not s:
+        raise HTTPException(status_code=404, detail="Session not found")
+    await db.session_logs.update_one({"id": session_id}, {"$set": {"status": "completed", "attended_at": datetime.now(timezone.utc).isoformat()}})
+    return await db.session_logs.find_one({"id": session_id}, {"_id": 0})
+
+
+HEALTH_TIPS = {
+    "general": [
+        {"title": "Hydrate first", "body": "Drink 500ml of water 30 minutes before training to boost performance and focus."},
+        {"title": "Sleep is growth", "body": "Aim for 7–9 hours — most muscle recovery and repair happens while you sleep."},
+        {"title": "Protein every meal", "body": "Target 1.6–2g of protein per kg bodyweight, spread across the day."},
+    ],
+    "build_muscle": [
+        {"title": "Progressive overload", "body": "Add a little weight or a rep each week to keep muscles adapting."},
+        {"title": "Eat in a slight surplus", "body": "A 200–300 kcal surplus fuels lean gains without excess fat."},
+    ],
+    "strength": [
+        {"title": "Prioritise compounds", "body": "Squat, deadlift and press drive the biggest strength gains — do them first."},
+        {"title": "Rest longer", "body": "Take 2–3 minutes between heavy sets for full power output."},
+    ],
+    "fat_loss": [
+        {"title": "Walk daily", "body": "8–10k steps a day burns meaningful calories without eating into recovery."},
+        {"title": "Keep protein high", "body": "Protein preserves muscle in a deficit and keeps you full."},
+    ],
+    "mobility": [
+        {"title": "Warm up dynamically", "body": "5 minutes of dynamic stretches prepares joints and prevents injury."},
+        {"title": "Train your core", "body": "A strong core protects your spine and improves every lift."},
+    ],
+    "endurance": [
+        {"title": "Fuel your runs", "body": "Carbs are your friend for high-intensity endurance work."},
+        {"title": "Build a base", "body": "Mix easy zone-2 sessions with occasional intervals for stamina."},
+    ],
+    "rehab": [
+        {"title": "Move pain-free", "body": "Stay within a comfortable range — controlled reps rebuild safely."},
+        {"title": "Consistency over intensity", "body": "Little and often beats heavy and rare during recovery."},
+    ],
+}
+
+
+@api_router.get("/customer/home")
+async def customer_home(goal: Optional[str] = None, user=Depends(get_current_user)):
+    today = datetime.now(timezone.utc).date()
+    bookings = await db.bookings.find({"customer_id": user["user_id"], "status": {"$ne": "cancelled"}}, {"_id": 0}).sort("created_at", -1).to_list(500)
+    active = [b for b in bookings if b.get("end_date") and datetime.strptime(b["end_date"], "%Y-%m-%d").date() >= today]
+    far = today + timedelta(days=3650)
+    primary_b = None
+    if active:
+        primary_b = sorted(active, key=lambda b: (_next_weekly_session(b, today) or far))[0]
+    elif bookings:
+        primary_b = bookings[0]
+
+    result = {"has_subscription": len(bookings) > 0, "active_count": len(active), "subscription_count": len(bookings), "primary": None}
+
+    if primary_b:
+        prog = _session_progress(primary_b)
+        logs = await db.session_logs.find({"booking_id": primary_b["id"]}, {"_id": 0}).sort("date", 1).to_list(500)
+        today_iso = today.isoformat()
+        planned_upcoming = [l for l in logs if l["date"] >= today_iso and l.get("status") != "completed"]
+        weekly = _next_weekly_session(primary_b, today)
+        next_date, next_session_id = None, None
+        if planned_upcoming:
+            nl = sorted(planned_upcoming, key=lambda l: l["date"])[0]
+            next_date, next_session_id = nl["date"], nl["id"]
+        elif weekly:
+            next_date = weekly.isoformat()
+        is_today = next_date == today_iso
+        today_log = next((l for l in logs if l["date"] == today_iso and l.get("status") != "completed"), None)
+        prov = await db.users.find_one({"user_id": primary_b["provider_id"]}, {"_id": 0}) or {}
+        pstatus = primary_b.get("payment_status", "pending")
+        today_session = None
+        if today_log:
+            today_session = {"id": today_log["id"], "title": today_log.get("title"), "exercises": today_log.get("exercises", [])}
+        elif is_today:
+            today_session = {"id": None, "title": "Training session", "exercises": []}
+        result["primary"] = {
+            "booking_id": primary_b["id"],
+            "service_title": primary_b.get("service_title", ""),
+            "service_image": primary_b.get("service_image", ""),
+            "provider_id": primary_b["provider_id"],
+            "provider_name": prov.get("business_name") or prov.get("name") or primary_b.get("provider_name", ""),
+            "provider_avatar": prov.get("avatar_url") or prov.get("picture", ""),
+            "plan_label": primary_b.get("plan_label", "Monthly"),
+            "time_slot": primary_b.get("time_slot", ""),
+            "mode": primary_b.get("mode", "physical"),
+            "society_name": primary_b.get("society_name"),
+            "start_date": primary_b.get("start_date"),
+            "end_date": primary_b.get("end_date"),
+            "next_session": {"date": next_date, "is_today": is_today, "session_id": next_session_id} if next_date else None,
+            "today_session": today_session,
+            "summary": {
+                "total": prog["total"], "completed": prog["completed"], "left": prog["due"],
+                "payment_status": pstatus, "paid_at": primary_b.get("paid_at"),
+                "next_due": primary_b.get("end_date"), "amount": primary_b.get("total", 0),
+            },
+        }
+
+    completed = await db.session_logs.find({"customer_id": user["user_id"], "status": "completed"}, {"_id": 0}).sort("date", -1).to_list(50)
+    last3 = completed[:3]
+    result["tracker"] = [{"id": l["id"], "date": l["date"], "title": l.get("title"), "exercises": l.get("exercises", [])} for l in last3]
+    cat_count = {}
+    for l in last3:
+        for e in l.get("exercises", []):
+            c = e.get("category") or "Other"
+            cat_count[c] = cat_count.get(c, 0) + 1
+    result["category_summary"] = sorted([{"category": k, "count": v} for k, v in cat_count.items()], key=lambda x: -x["count"])
+
+    featured = await list_providers(category="gym")
+    result["featured_trainers"] = featured[:6]
+
+    g = (goal or "").strip()
+    tips = list(HEALTH_TIPS.get(g, [])) + list(HEALTH_TIPS["general"])
+    result["tips"] = tips[:5]
+    return result
 
 
 # ---------------- Admin ----------------
