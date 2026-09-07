@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Outlet, NavLink, useNavigate, Navigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
-import { Store, ClipboardList, LayoutDashboard, Users, ShieldCheck, ArrowLeft, LayoutGrid, Building2, UserCog, Menu, X, Eye } from "lucide-react";
+import { Store, ClipboardList, LayoutDashboard, Users, ShieldCheck, ArrowLeft, LayoutGrid, Building2, UserCog, Menu, X, Eye, LogOut } from "lucide-react";
 import { UruLogo } from "@/components/UruLogo";
 
 const Item = ({ to, icon: Icon, label, testid, end, onClick }) => (
@@ -22,7 +22,7 @@ const Item = ({ to, icon: Icon, label, testid, end, onClick }) => (
 );
 
 export default function ManageLayout() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const isAdmin = user?.role === "admin";
@@ -92,6 +92,13 @@ export default function ManageLayout() {
             className="w-full flex items-center justify-center gap-2 rounded-xl border border-white/10 text-gray-400 hover:bg-white/5 hover:text-white py-2.5 text-sm font-medium transition-colors"
           >
             <ArrowLeft className="h-4 w-4" /> Back to app
+          </button>
+          <button
+            data-testid="logout-button"
+            onClick={logout}
+            className="w-full flex items-center justify-center gap-2 rounded-xl text-red-400 hover:bg-red-500/10 py-2.5 text-sm font-medium transition-colors"
+          >
+            <LogOut className="h-4 w-4" /> Log out
           </button>
         </div>
       </aside>
