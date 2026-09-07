@@ -725,6 +725,10 @@ class SessionLogCreate(BaseModel):
     exercises: List[SessionExercise] = []
 
 
+class SessionLogBulk(BaseModel):
+    sessions: List[SessionLogCreate] = []
+
+
 def _next_weekly_session(b, today):
     try:
         start = datetime.strptime(b.get("start_date") or b.get("date"), "%Y-%m-%d").date()
@@ -756,6 +760,28 @@ async def create_session_log(booking_id: str, body: SessionLogCreate, user=Depen
     }
     await db.session_logs.insert_one(doc)
     return await db.session_logs.find_one({"id": sid}, {"_id": 0})
+
+
+@api_router.post("/provider/bookings/{booking_id}/sessions/bulk")
+async def create_session_logs_bulk(booking_id: str, body: SessionLogBulk, user=Depends(require_provider)):
+    b = await db.bookings.find_one({"id": booking_id, "provider_id": user["user_id"]}, {"_id": 0})
+    if not b:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    now = datetime.now(timezone.utc).isoformat()
+    docs = []
+    for s in body.sessions:
+        if not s.exercises:
+            continue
+        docs.append({
+            "id": f"ses_{uuid.uuid4().hex[:12]}", "booking_id": booking_id, "customer_id": b["customer_id"],
+            "provider_id": user["user_id"], "service_id": b.get("service_id"), "service_title": b.get("service_title", ""),
+            "date": s.date, "title": s.title or "Training session",
+            "exercises": [{"name": e.name, "category": e.category} for e in s.exercises],
+            "status": "planned", "attended_at": None, "created_at": now,
+        })
+    if docs:
+        await db.session_logs.insert_many(docs)
+    return {"created": len(docs)}
 
 
 @api_router.get("/provider/bookings/{booking_id}/sessions")

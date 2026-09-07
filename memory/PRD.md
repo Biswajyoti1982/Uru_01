@@ -113,6 +113,12 @@ Build an app where users subscribe to classes for different activities (gym trai
 - Backend: `session_logs` collection; endpoints `GET /customer/home`, `POST/GET /provider/bookings/{id}/sessions`, `DELETE /provider/sessions/{id}`, `POST /customer/sessions/{id}/attend`; payment PATCH now stores `paid_at`. Fixed Home.jsx `hasSub` (was calling non-existent `GET /bookings`).
 - Verified end-to-end via curl (full flow) + screenshots (all sections + both dialogs).
 
+## Iteration 12 (2026-06) — Weekly Plan View for trainers
+- Trainers can now pre-plan a client's whole week at once: Bookings → Clients → **"Plan week"** (`provider/WeekPlanDialog.jsx`). A 7-day view (with prev/next week nav) lets them add a titled session + exercises per day; existing planned/attended sessions show inline with delete.
+- Reusable `provider/ExercisePicker.jsx` extracted (library + custom entries) and used by the week planner.
+- Backend: `POST /api/provider/bookings/{id}/sessions/bulk` inserts many session logs at once (skips days with no exercises). Delete endpoint now returns 404 when not found.
+- Verified via curl (bulk create skips empties) + screenshot (week grid, expandable day picker, existing sessions).
+
 ## Backlog (P1/P2)
 - P1: Admin can pin/highlight activities/providers in a top strip on the Home feed.
 - P2: Customer pause-subscription (holidays); real ratings from completed bookings (currently a seeded field); email renewal reminders (Resend).
