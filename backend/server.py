@@ -504,12 +504,9 @@ async def list_providers(category: Optional[str] = None):
     by_provider = {}
     for s in services:
         by_provider.setdefault(s["provider_id"], []).append(s)
-    result = []
-    for pid, svcs in by_provider.items():
-        u = await db.users.find_one({"user_id": pid}, {"_id": 0})
-        if not u:
-            continue
-        result.append(_provider_summary(u, svcs))
+    users = await db.users.find({"user_id": {"$in": list(by_provider.keys())}}, {"_id": 0}).to_list(2000)
+    user_map = {u["user_id"]: u for u in users}
+    result = [_provider_summary(user_map[pid], svcs) for pid, svcs in by_provider.items() if pid in user_map]
     result.sort(key=lambda x: (x["rating"], x["service_count"]), reverse=True)
     return result
 
@@ -540,8 +537,13 @@ async def list_services(category: Optional[str] = None):
     if category:
         query["category"] = category
     services = await db.services.find(query, {"_id": 0}).to_list(500)
+    counts = await db.bookings.aggregate([
+        {"$match": {"service_id": {"$in": [s["id"] for s in services]}, "status": {"$in": ["active", "confirmed"]}}},
+        {"$group": {"_id": "$service_id", "n": {"$sum": 1}}},
+    ]).to_list(1000)
+    count_map = {c["_id"]: c["n"] for c in counts}
     for svc in services:
-        svc["booking_count"] = await db.bookings.count_documents({"service_id": svc["id"], "status": {"$in": ["active", "confirmed"]}})
+        svc["booking_count"] = count_map.get(svc["id"], 0)
     services.sort(key=lambda s: (s["booking_count"], s.get("created_at", "")), reverse=True)
     return services
 
@@ -1114,8 +1116,13 @@ async def admin_providers(status: Optional[str] = None, user=Depends(require_adm
     if status:
         query["provider_status"] = status
     providers = await db.users.find(query, {"_id": 0}).sort("created_at", -1).to_list(500)
+    counts = await db.services.aggregate([
+        {"$match": {"provider_id": {"$in": [p["user_id"] for p in providers]}}},
+        {"$group": {"_id": "$provider_id", "n": {"$sum": 1}}},
+    ]).to_list(1000)
+    count_map = {c["_id"]: c["n"] for c in counts}
     for p in providers:
-        p["service_count"] = await db.services.count_documents({"provider_id": p["user_id"]})
+        p["service_count"] = count_map.get(p["user_id"], 0)
     return providers
 
 
