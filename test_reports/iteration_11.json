@@ -1,0 +1,40 @@
+{
+  "summary": "Tested new phone+password + OTP auth (iteration 11). Backend pytest: 10 passed, 1 skipped (env limitation), 1 FAIL (seeded account 9000000001 missing in DB). Frontend E2E via Playwright: signup, OTP flow, password login, and wrong-password path all work; navigation to /app succeeds. Legacy session_token regression passes for customer+provider.",
+  "backend_issues": {
+    "critical": [
+      {"endpoint": "POST /api/auth/login", "issue": "Seeded test account phone=9000000001 password=Test@1234 (documented in review request as pre-seeded) does NOT exist in MongoDB users collection. Login returns 401. Main agent should re-run the seed script or add an idempotent seeding step on startup.", "priority": "HIGH"}
+    ],
+    "minor": [
+      {"endpoint": "POST /api/auth/login", "issue": "Brute-force lockout keys on request.client.host+phone. Behind k8s ingress the perceived client host rotates between pods (e.g., 10.208.134.74 vs 10.208.134.75), so 5-fail counter splits and 429 rarely triggers from external clients. Consider honoring X-Forwarded-For (leftmost) or keying only on phone with a slightly longer window."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_phone_otp_auth.py",
+    "/app/test_reports/pytest/phone_otp.xml"
+  ],
+  "action_items": [
+    "Re-seed test account phone=9000000001 password=Test@1234 (name any, role=customer) or add an idempotent seed_test_users() to startup. Verified DB.users has no doc with login_phone=9000000001.",
+    "(Optional) Use X-Forwarded-For to compute stable client IP for _check_lock/_record_fail so lockout works behind ingress."
+  ],
+  "critical_code_review_comments": [
+    "server.py: _check_lock/_record_fail identifier uses request.client.host directly; behind k8s ingress this rotates. Suggest: identifier = (request.headers.get('x-forwarded-for','').split(',')[0].strip() or request.client.host) + ':' + phone.",
+    "server.py otp_verify: creates users with role='customer' — good (mobile accounts cannot become admin). No admin allowlist check needed here since role is hardcoded.",
+    "server.py otp_codes collection is written but code is never actually compared against the stored code, only against MOCK_OTP constant. When real provider is wired, verify path must read otp_codes[phone].code and expires_at.",
+    "AuthPanel.jsx uses sonner toasts for error display — good; no inline error markup, so ARIA/live-region for errors could be improved."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_phone_otp_auth.py"
+  ],
+  "success_rate": {"backend": "91%", "frontend": "100%"},
+  "test_credentials": "New created (per test run) or use OTP+any phone+123456. Seeded 9000000001/Test@1234 is MISSING; needs re-seeding.",
+  "seed_data_creation": "None. Tests create ephemeral users with random phones (99XX + timestamp suffix). No cleanup done — tests are additive.",
+  "retest_needed": true,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend test file /app/backend/tests/test_phone_otp_auth.py covers register (success/dup/short-pass), login (wrong pass, e2e with fresh user, seeded account), OTP (request/verify/wrong-code) and legacy session_token regression. Lockout test is soft-skipped because k8s ingress rotates source IPs; validate lockout manually from one IP if needed. Frontend Playwright test covered all three auth flows and confirmed navigation to /app.",
+  "rca of the issue": "Seeded account absence: users.find_one({'login_phone':'9000000001'}) returns None. Either the seed step wasn't run, was run against a different DB_NAME, or was cleared. Fix: add idempotent upsert in startup or run scripts/seed_test_users.py. Verified via direct motor query against MONGO_URL/DB_NAME from /app/backend/.env."
+}

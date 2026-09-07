@@ -6,6 +6,7 @@ import os
 import logging
 import re
 import uuid
+import bcrypt
 from pathlib import Path
 from pydantic import BaseModel, Field
 from typing import List, Optional, Literal
@@ -180,6 +181,7 @@ async def get_current_user(request: Request, authorization: Optional[str] = Head
     user = await db.users.find_one({"user_id": session["user_id"]}, {"_id": 0})
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
+    user.pop("password_hash", None)
     return user
 
 
@@ -269,6 +271,159 @@ async def logout(request: Request, response: Response):
         await db.user_sessions.delete_one({"session_token": token})
     response.delete_cookie("session_token", path="/")
     return {"ok": True}
+
+
+# ---------------- Mobile + password / OTP auth ----------------
+def hash_password(password: str) -> str:
+    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+
+
+def verify_password(plain: str, hashed: str) -> bool:
+    try:
+        return bcrypt.checkpw(plain.encode("utf-8"), hashed.encode("utf-8"))
+    except Exception:
+        return False
+
+
+async def _issue_session(response: Response, user_id: str):
+    token = f"sess_{uuid.uuid4().hex}{uuid.uuid4().hex}"
+    expires_at = datetime.now(timezone.utc) + timedelta(days=7)
+    await db.user_sessions.insert_one({
+        "user_id": user_id, "session_token": token,
+        "expires_at": expires_at.isoformat(), "created_at": datetime.now(timezone.utc).isoformat(),
+    })
+    response.set_cookie("session_token", token, httponly=True, secure=True, samesite="none", path="/", max_age=7 * 24 * 3600)
+    return token
+
+
+FAIL_LIMIT = 5
+LOCK_MINUTES = 15
+
+
+async def _check_lock(identifier: str):
+    rec = await db.login_attempts.find_one({"identifier": identifier}, {"_id": 0})
+    if rec and rec.get("locked_until"):
+        lu = datetime.fromisoformat(rec["locked_until"])
+        if lu.tzinfo is None:
+            lu = lu.replace(tzinfo=timezone.utc)
+        if lu > datetime.now(timezone.utc):
+            raise HTTPException(status_code=429, detail="Too many failed attempts. Please try again in a few minutes.")
+
+
+async def _record_fail(identifier: str):
+    rec = await db.login_attempts.find_one({"identifier": identifier}, {"_id": 0})
+    count = (rec.get("count", 0) + 1) if rec else 1
+    upd = {"identifier": identifier, "count": count}
+    if count >= FAIL_LIMIT:
+        upd["locked_until"] = (datetime.now(timezone.utc) + timedelta(minutes=LOCK_MINUTES)).isoformat()
+        upd["count"] = 0
+    await db.login_attempts.update_one({"identifier": identifier}, {"$set": upd}, upsert=True)
+
+
+async def _clear_fail(identifier: str):
+    await db.login_attempts.delete_one({"identifier": identifier})
+
+
+def _norm_phone(p: str) -> str:
+    return re.sub(r"[\s\-()]", "", (p or "").strip())
+
+
+def _sanitize(u: dict) -> dict:
+    u = {k: v for k, v in u.items() if k not in ("_id", "password_hash")}
+    return u
+
+
+MOCK_OTP = "123456"
+
+
+class PhoneRegister(BaseModel):
+    name: str
+    phone: str
+    password: str
+
+
+class PhoneLogin(BaseModel):
+    phone: str
+    password: str
+
+
+class OtpRequest(BaseModel):
+    phone: str
+
+
+class OtpVerify(BaseModel):
+    phone: str
+    code: str
+    name: Optional[str] = ""
+
+
+@api_router.post("/auth/register")
+async def register_phone(body: PhoneRegister, response: Response):
+    phone = _norm_phone(body.phone)
+    if len(phone) < 8:
+        raise HTTPException(status_code=400, detail="Please enter a valid mobile number")
+    if len(body.password) < 6:
+        raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
+    if not body.name.strip():
+        raise HTTPException(status_code=400, detail="Please enter your name")
+    if await db.users.find_one({"login_phone": phone}):
+        raise HTTPException(status_code=400, detail="An account with this mobile number already exists")
+    user_id = f"user_{uuid.uuid4().hex[:12]}"
+    await db.users.insert_one({
+        "user_id": user_id, "login_phone": phone, "phone": phone, "name": body.name.strip(),
+        "password_hash": hash_password(body.password), "email": "", "picture": "",
+        "role": "customer", "provider_status": None, "society_id": None, "society_name": None,
+        "auth_method": "password", "created_at": datetime.now(timezone.utc).isoformat(),
+    })
+    await _issue_session(response, user_id)
+    return _sanitize(await db.users.find_one({"user_id": user_id}))
+
+
+@api_router.post("/auth/login")
+async def login_phone(body: PhoneLogin, request: Request, response: Response):
+    phone = _norm_phone(body.phone)
+    xff = request.headers.get("x-forwarded-for", "")
+    client_ip = xff.split(",")[0].strip() if xff else (request.client.host if request.client else "unknown")
+    identifier = f"{client_ip}:{phone}"
+    await _check_lock(identifier)
+    u = await db.users.find_one({"login_phone": phone})
+    if not u or not u.get("password_hash") or not verify_password(body.password, u["password_hash"]):
+        await _record_fail(identifier)
+        raise HTTPException(status_code=401, detail="Invalid mobile number or password")
+    await _clear_fail(identifier)
+    await _issue_session(response, u["user_id"])
+    return _sanitize(u)
+
+
+@api_router.post("/auth/otp/request")
+async def otp_request(body: OtpRequest):
+    phone = _norm_phone(body.phone)
+    if len(phone) < 8:
+        raise HTTPException(status_code=400, detail="Please enter a valid mobile number")
+    await db.otp_codes.update_one({"phone": phone}, {"$set": {
+        "code": MOCK_OTP, "expires_at": (datetime.now(timezone.utc) + timedelta(minutes=10)).isoformat(),
+    }}, upsert=True)
+    # OTP provider not configured yet — return the dev code so the flow is testable.
+    return {"ok": True, "dev_code": MOCK_OTP, "message": "OTP sending is not configured yet. Use code 123456 for now."}
+
+
+@api_router.post("/auth/otp/verify")
+async def otp_verify(body: OtpVerify, response: Response):
+    phone = _norm_phone(body.phone)
+    if body.code.strip() != MOCK_OTP:
+        raise HTTPException(status_code=400, detail="Invalid or expired code")
+    u = await db.users.find_one({"login_phone": phone})
+    if not u:
+        user_id = f"user_{uuid.uuid4().hex[:12]}"
+        await db.users.insert_one({
+            "user_id": user_id, "login_phone": phone, "phone": phone,
+            "name": (body.name or "").strip() or f"Member {phone[-4:]}", "email": "", "picture": "",
+            "role": "customer", "provider_status": None, "society_id": None, "society_name": None,
+            "auth_method": "otp", "created_at": datetime.now(timezone.utc).isoformat(),
+        })
+        u = await db.users.find_one({"user_id": user_id})
+    await _issue_session(response, u["user_id"])
+    return _sanitize(u)
 
 
 # ---------------- Provider onboarding ----------------
@@ -1314,6 +1469,19 @@ async def on_startup():
     await seed_data()
     await seed_more_services()
     await seed_gym_enrichment()
+    await seed_phone_test_user()
+
+
+async def seed_phone_test_user():
+    phone = "9000000001"
+    if await db.users.find_one({"login_phone": phone}):
+        return
+    await db.users.insert_one({
+        "user_id": f"user_{uuid.uuid4().hex[:12]}", "login_phone": phone, "phone": phone,
+        "name": "Mobile Tester", "email": "", "picture": "", "password_hash": hash_password("Test@1234"),
+        "role": "customer", "provider_status": None, "society_id": None, "society_name": None,
+        "auth_method": "password", "created_at": datetime.now(timezone.utc).isoformat(),
+    })
 
 
 app.include_router(api_router)

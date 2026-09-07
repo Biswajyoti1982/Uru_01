@@ -124,6 +124,11 @@ Build an app where users subscribe to classes for different activities (gym trai
 - Backend: `/api/customer/home` now returns `progress: {weekly[], muscle_balance[], total_completed}` aggregated from the customer's completed session logs.
 - Verified via curl + screenshot.
 
+## Iteration 14 (2026-06) — Multiple login options (mobile+password, OTP, Google)
+- New unified login screen (`components/AuthPanel.jsx` inside `URULanding.jsx`): Password tab (sign in / sign up: name+mobile+password), OTP tab (mocked — code 123456 until a provider like Twilio is added), then "Continue with Google" (unchanged).
+- Backend: bcrypt password hashing, `POST /api/auth/register|login`, `POST /api/auth/otp/request|verify`; all issue the existing `session_token` cookie so `get_current_user` (and every protected route) works for all methods. Brute-force lockout (5/15min). `password_hash` stripped everywhere. Mobile/OTP accounts default role=customer (never auto-admin).
+- Verified via curl (all flows + error codes) + screenshots; testing agent validated flows.
+
 ## Backlog (P1/P2)
 - P1: Admin can pin/highlight activities/providers in a top strip on the Home feed.
 - P2: Customer pause-subscription (holidays); real ratings from completed bookings (currently a seeded field); email renewal reminders (Resend).

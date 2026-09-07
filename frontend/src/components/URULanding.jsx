@@ -1,13 +1,8 @@
 import React from "react";
 import { motion } from "framer-motion";
-import { Dumbbell, HeartPulse, Trophy, ArrowRight, Star } from "lucide-react";
+import { Dumbbell, HeartPulse, Trophy, Star } from "lucide-react";
 import { UruLogo } from "@/components/UruLogo";
-
-// REMINDER: DO NOT HARDCODE THE URL, OR ADD ANY FALLBACKS OR REDIRECT URLS, THIS BREAKS THE AUTH
-const login = () => {
-  const redirectUrl = window.location.origin + "/app";
-  window.location.href = `https://auth.emergentagent.com/?redirect=${encodeURIComponent(redirectUrl)}`;
-};
+import AuthPanel from "@/components/AuthPanel";
 
 export default function URULanding() {
   return (
@@ -65,18 +60,9 @@ export default function URULanding() {
 
       <div className="flex-1" />
 
-      {/* CTA */}
+      {/* Auth */}
       <div className="px-6 pb-10 pt-8">
-        <button
-          data-testid="landing-login-button"
-          onClick={login}
-          className="w-full h-14 rounded-full bg-[#F97316] text-white font-semibold text-base flex items-center justify-center gap-2 active:scale-95 transition-transform shadow-lg shadow-[#F97316]/30"
-        >
-          Continue with Google <ArrowRight className="h-5 w-5" />
-        </button>
-        <p className="text-center text-xs text-gray-400 mt-4">
-          By continuing you agree to URU's Terms & Privacy Policy
-        </p>
+        <AuthPanel />
       </div>
     </div>
   );
