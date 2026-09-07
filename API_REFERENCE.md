@@ -5,8 +5,8 @@ Only the frontend is rebuilt; the backend stays as-is.
 
 ## Base URL & routing
 - All endpoints are prefixed with `/api`.
-- Base URL = your deployed backend URL (do NOT hardcode; read from an env/config in the mobile app).
-  - In this web project it is `REACT_APP_BACKEND_URL` (e.g. `https://<app>.preview.emergentagent.com`). After you deploy, use the production URL.
+- **Production base URL: `https://activity-connect-36.emergent.host`** → call `https://activity-connect-36.emergent.host/api/...`
+- Do NOT hardcode in source; put the base URL in the mobile app's env/config (e.g. Expo `extra` / `EXPO_PUBLIC_API_URL`). In this web project the equivalent is `REACT_APP_BACKEND_URL`.
 - Content-Type: `application/json`.
 
 ## Auth model (IMPORTANT for mobile)

@@ -3,6 +3,11 @@
 Paste this into the Mobile Agent prompt. It describes the app to rebuild in Expo/React Native.
 Backend stays the same (see `/app/API_REFERENCE.md`) — the mobile app just calls those `/api` endpoints.
 
+## Backend base URL (production, already deployed)
+- **`https://activity-connect-36.emergent.host`** → all calls go to `https://activity-connect-36.emergent.host/api/...`
+- Store this in the Expo app's env/config (e.g. `EXPO_PUBLIC_API_URL`); do not hardcode in source.
+- Auth: send `Authorization: Bearer <session_token>` (token is returned in register/login/otp-verify/session responses).
+
 ## App concept
 URU is a **gym-only** marketplace: customers subscribe to certified gym trainers (personal / small-group / online). Trainers run a console; admins approve providers & services.
 
