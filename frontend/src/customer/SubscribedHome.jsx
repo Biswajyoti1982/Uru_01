@@ -8,7 +8,7 @@ import { useAuth } from "@/context/AuthContext";
 import { UruLogo } from "@/components/UruLogo";
 import { CATEGORY_COLORS } from "@/lib/exerciseLibrary";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { MapPin, Video, Play, Calendar, ChevronRight, Star, Award, ShieldCheck, Activity, CheckCircle2, CreditCard, Lightbulb, Dumbbell, X } from "lucide-react";
+import { MapPin, Video, Play, Calendar, ChevronRight, Star, Award, ShieldCheck, Activity, CheckCircle2, CreditCard, Lightbulb, Dumbbell, X, TrendingUp } from "lucide-react";
 
 const weekday = (iso) => { try { return new Date(iso + "T00:00:00").toLocaleDateString("en-IN", { weekday: "long" }); } catch { return ""; } };
 
@@ -45,6 +45,8 @@ export default function SubscribedHome({ answers }) {
   const p = data.primary;
   const next = p?.next_session;
   const sum = p?.summary;
+  const prog = data.progress;
+  const maxWk = prog ? Math.max(1, ...prog.weekly.map((x) => x.completed)) : 1;
 
   return (
     <div className="pb-6 bg-gray-50 min-h-screen">
@@ -177,6 +179,53 @@ export default function SubscribedHome({ answers }) {
       ) : (
         <div className="px-5 mt-6 text-center py-10">
           <p className="text-sm text-gray-500">No active subscription details.</p>
+        </div>
+      )}
+
+      {/* Progress charts */}
+      {prog?.total_completed > 0 && (
+        <div className="px-5 mt-6">
+          <div className="flex items-center gap-2 mb-3">
+            <TrendingUp className="h-4 w-4 text-[#F97316]" />
+            <h2 className="font-display text-lg font-bold text-gray-900">Your progress</h2>
+          </div>
+          <div data-testid="progress-charts" className="bg-white rounded-3xl border border-gray-100 shadow-sm p-4 space-y-5">
+            {/* Weekly completed trend */}
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Sessions completed / week</p>
+                <span className="text-xs text-gray-400">{prog.total_completed} total</span>
+              </div>
+              <div className="flex items-end justify-between gap-2 h-28">
+                {prog.weekly.map((w, i) => (
+                  <div key={w.week_start} data-testid={`week-bar-${w.week_start}`} className="flex-1 flex flex-col items-center gap-1 h-full justify-end">
+                    <span className="text-[11px] font-semibold text-gray-700 h-3">{w.completed || ""}</span>
+                    <motion.div initial={{ height: 0 }} animate={{ height: `${Math.max((w.completed / maxWk) * 100, 4)}%` }} transition={{ delay: i * 0.06, type: "spring", stiffness: 120, damping: 16 }} className={`w-full rounded-t-lg ${w.completed ? "bg-[#F97316]" : "bg-gray-100"}`} />
+                    <span className="text-[10px] text-gray-400">{w.label}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            {/* Muscle-group balance */}
+            {prog.muscle_balance.length > 0 && (
+              <div className="pt-4 border-t border-gray-100">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Muscle-group balance</p>
+                <div className="space-y-2.5">
+                  {prog.muscle_balance.map((m, i) => (
+                    <div key={m.category} data-testid={`balance-${m.category}`}>
+                      <div className="flex items-center justify-between mb-0.5">
+                        <span className="text-xs font-medium text-gray-700">{m.category}</span>
+                        <span className="text-[11px] text-gray-400">{m.pct}%</span>
+                      </div>
+                      <div className="h-2 rounded-full bg-gray-100 overflow-hidden">
+                        <motion.div initial={{ width: 0 }} animate={{ width: `${m.pct}%` }} transition={{ delay: i * 0.06, duration: 0.5 }} className="h-full rounded-full" style={{ background: CATEGORY_COLORS[m.category] || "#9CA3AF" }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       )}
 

@@ -119,6 +119,11 @@ Build an app where users subscribe to classes for different activities (gym trai
 - Backend: `POST /api/provider/bookings/{id}/sessions/bulk` inserts many session logs at once (skips days with no exercises). Delete endpoint now returns 404 when not found.
 - Verified via curl (bulk create skips empties) + screenshot (week grid, expandable day picker, existing sessions).
 
+## Iteration 13 (2026-06) — Customer progress charts
+- Subscribed home now has a **"Your progress"** section: a 6-week bar chart of sessions completed per week + an animated **muscle-group balance** breakdown (% of exercises per category), both CSS/framer-motion (no chart lib).
+- Backend: `/api/customer/home` now returns `progress: {weekly[], muscle_balance[], total_completed}` aggregated from the customer's completed session logs.
+- Verified via curl + screenshot.
+
 ## Backlog (P1/P2)
 - P1: Admin can pin/highlight activities/providers in a top strip on the Home feed.
 - P2: Customer pause-subscription (holidays); real ratings from completed bookings (currently a seeded field); email renewal reminders (Resend).

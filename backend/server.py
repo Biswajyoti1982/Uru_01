@@ -909,6 +909,27 @@ async def customer_home(goal: Optional[str] = None, user=Depends(get_current_use
             cat_count[c] = cat_count.get(c, 0) + 1
     result["category_summary"] = sorted([{"category": k, "count": v} for k, v in cat_count.items()], key=lambda x: -x["count"])
 
+    # Progress: weekly completed trend (last 6 weeks) + overall muscle-group balance
+    monday = today - timedelta(days=today.weekday())
+    week_starts = [monday - timedelta(days=7 * i) for i in range(5, -1, -1)]
+    wk_count = {w.isoformat(): 0 for w in week_starts}
+    mb, total_ex = {}, 0
+    for l in completed:
+        try:
+            d = datetime.strptime(l["date"], "%Y-%m-%d").date()
+        except Exception:
+            continue
+        wk = (d - timedelta(days=d.weekday())).isoformat()
+        if wk in wk_count:
+            wk_count[wk] += 1
+        for e in l.get("exercises", []):
+            c = e.get("category") or "Other"
+            mb[c] = mb.get(c, 0) + 1
+            total_ex += 1
+    weekly = [{"week_start": w.isoformat(), "label": w.strftime("%-d %b"), "completed": wk_count[w.isoformat()]} for w in week_starts]
+    muscle_balance = sorted([{"category": k, "count": v, "pct": round(v * 100 / total_ex) if total_ex else 0} for k, v in mb.items()], key=lambda x: -x["count"])
+    result["progress"] = {"weekly": weekly, "muscle_balance": muscle_balance, "total_completed": len(completed)}
+
     featured = await list_providers(category="gym")
     result["featured_trainers"] = featured[:6]
 
