@@ -83,3 +83,7 @@ android-sdk/
 credentials.json
 *.key
 .credentials
+.env
+.env.*
+*.env
+frontend/node_modules/.cache/default-development/0.pack
